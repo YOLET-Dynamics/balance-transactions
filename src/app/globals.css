@@ -1,0 +1,285 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Base layer - CSS variables and root styles
+ */
+@layer base {
+  :root {
+    /* Light theme colors */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+
+    /* Chart colors */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+
+    /* Sidebar colors */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Border radius */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Dark theme colors */
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+
+    /* Chart colors - dark theme */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+
+    /* Sidebar colors - dark theme */
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+/**
+ * Global base styles
+ */
+@layer base {
+  * {
+    @apply border-border;
+    font-family: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+      "Noto Sans", sans-serif;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Override for math elements that should use serif */
+  .katex,
+  .katex *,
+  .math-block,
+  .math-inline {
+    font-family: "KaTeX_Main", "Times New Roman", serif !important;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .writing-mode-vertical {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+
+  /* METT Brand Gradient Text */
+  .gradient-text {
+    background: linear-gradient(to right, #153d59, #1b3e98);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Floating animations for brand elements */
+  .float-slow {
+    animation: float-slow 6s ease-in-out infinite;
+  }
+
+  .float-medium {
+    animation: float-medium 4s ease-in-out infinite;
+  }
+
+  .float-fast {
+    animation: float-fast 3s ease-in-out infinite;
+  }
+
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes float-medium {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes float-fast {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+
+  /* Gradient backgrounds */
+  .bg-mett-gradient {
+    background: linear-gradient(
+      to bottom right,
+      rgba(21, 61, 89, 0.05),
+      rgba(242, 180, 28, 0.05)
+    );
+  }
+
+  .bg-mett-primary-gradient {
+    background: linear-gradient(135deg, #153d59 0%, #1b3e98 100%);
+  }
+}
+
+/**
+ * Components: Markdown + KaTeX
+ */
+@layer components {
+  .prose {
+    @apply text-slate-800 leading-7;
+  }
+  .prose h1,
+  .prose h2,
+  .prose h3 {
+    @apply font-semibold tracking-tight text-slate-900;
+  }
+  .prose h1 {
+    @apply text-3xl md:text-4xl mb-6;
+  }
+  .prose h2 {
+    @apply text-2xl md:text-3xl mb-4 mt-8;
+  }
+  .prose h3 {
+    @apply text-xl md:text-2xl mb-3 mt-6;
+  }
+  .prose p {
+    @apply my-4 text-slate-700;
+  }
+  .prose ul {
+    @apply my-4 pl-6 list-disc;
+  }
+  .prose ol {
+    @apply my-4 pl-6 list-decimal;
+  }
+  .prose a {
+    @apply text-primaryBlue-700 underline underline-offset-2 hover:text-primaryBlue-500;
+  }
+  .prose code {
+    @apply rounded bg-slate-100 px-1 py-0.5 text-sm text-slate-800;
+  }
+  .prose pre {
+    @apply bg-slate-900 text-slate-50 rounded-lg p-4 overflow-x-auto;
+  }
+}
+
+/* Dark mode tuned colors */
+@media (prefers-color-scheme: dark) {
+  .prose {
+    color: rgb(226 232 240);
+  }
+  .prose h1,
+  .prose h2,
+  .prose h3 {
+    color: rgb(241 245 249);
+  }
+  .prose p {
+    color: rgb(203 213 225);
+  }
+  .prose a {
+    color: #60a5fa;
+  }
+  .prose a:hover {
+    color: #93c5fd;
+  }
+  .prose code {
+    background-color: rgb(30 41 59);
+    color: rgb(226 232 240);
+  }
+  .prose pre {
+    background-color: rgb(2 6 23);
+    color: rgb(226 232 240);
+  }
+  .prose .katex-display {
+    background-color: rgb(15 23 42 / 0.4);
+    border-color: rgb(51 65 85);
+  }
+  .prose .katex-display > .katex {
+    color: rgb(226 232 240);
+  }
+  .prose .katex .mbin,
+  .prose .katex .mrel,
+  .prose .katex .mord {
+    color: rgb(203 213 225);
+  }
+  .prose .katex-inline {
+    background-color: rgb(30 41 59);
+    color: rgb(226 232 240);
+  }
+}
