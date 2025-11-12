@@ -32,7 +32,7 @@ export default function LoginPage() {
         showSuccessToast: true,
         successMessage: "Welcome back!",
       });
-      
+
       router.push("/dashboard");
     } catch (error) {
       // Error toast is handled by api client
@@ -61,34 +61,39 @@ export default function LoginPage() {
             <h1 className="text-5xl xl:text-6xl font-logo font-bold mb-6">
               Balance
             </h1>
-            <p className="text-xl text-gray-400 mb-8">
-              Track. Record. Grow.
-            </p>
+            <p className="text-xl text-gray-400 mb-8">Track. Record. Grow.</p>
             <p className="text-gray-500 leading-relaxed">
-              Your complete financial management solution designed for Ethiopian businesses. 
-              Manage sales invoices, payment vouchers, and purchase bills with ease.
+              Your complete financial management solution designed for Ethiopian
+              businesses. Manage sales invoices, payment vouchers, and purchase
+              bills with ease.
             </p>
-            
+
             <div className="mt-12 space-y-4">
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
                   <h3 className="font-semibold mb-1">Sequential Numbering</h3>
-                  <p className="text-sm text-gray-500">Automatic document numbering with yearly reset</p>
+                  <p className="text-sm text-gray-500">
+                    Automatic document numbering with yearly reset
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
                   <h3 className="font-semibold mb-1">Tax Compliance</h3>
-                  <p className="text-sm text-gray-500">Built-in VAT and withholding tax calculations</p>
+                  <p className="text-sm text-gray-500">
+                    Built-in VAT and withholding tax calculations
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
                   <h3 className="font-semibold mb-1">Secure & Fast</h3>
-                  <p className="text-sm text-gray-500">Bank-level security with lightning-fast performance</p>
+                  <p className="text-sm text-gray-500">
+                    Bank-level security with lightning-fast performance
+                  </p>
                 </div>
               </div>
             </div>
@@ -111,10 +116,7 @@ export default function LoginPage() {
             </div>
 
             {/* Form */}
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="space-y-6"
-            >
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-white">
                   Email
@@ -143,21 +145,13 @@ export default function LoginPage() {
                   {...register("password")}
                 />
                 {errors.password && (
-                  <p className="text-sm text-red-400">{errors.password.message}</p>
+                  <p className="text-sm text-red-400">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    className="rounded border-white/20 bg-black text-brand-yellow-500 focus:ring-brand-yellow-500"
-                  />
-                  <label htmlFor="remember" className="text-sm text-gray-400">
-                    Remember me
-                  </label>
-                </div>
                 <Link
                   href="/auth/forgot-password"
                   className="text-sm text-brand-yellow-500 hover:text-brand-yellow-600 transition-colors"

@@ -73,7 +73,7 @@ export async function GET(
     for await (const chunk of stream) {
       chunks.push(chunk as Uint8Array);
     }
-    
+
     const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
     const buffer = new Uint8Array(totalLength);
     let offset = 0;
@@ -97,4 +97,3 @@ export async function GET(
     );
   }
 }
-

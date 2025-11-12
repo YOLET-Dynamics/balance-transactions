@@ -48,7 +48,6 @@ export function usePayments(options: PaymentsListOptions = {}) {
         params: { page, limit, search, direction, year },
       }),
     staleTime: 30 * 1000,
-    showErrorToast: false,
     retry: false,
   });
 }
@@ -58,7 +57,6 @@ export function usePayment(id: string) {
     queryKey: ["payment", id],
     queryFn: () => api.get(`/api/payments/${id}`),
     enabled: !!id,
-    showErrorToast: false,
     retry: false,
   });
 }

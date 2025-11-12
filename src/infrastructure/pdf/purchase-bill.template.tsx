@@ -173,7 +173,7 @@ interface PurchaseBillPDFProps {
     tradeName?: string | null;
     subcity?: string | null;
     cityRegion?: string | null;
-    country?: string;
+    country?: string | null;
     tin?: string | null;
     vatNumber?: string | null;
     phone?: string | null;
