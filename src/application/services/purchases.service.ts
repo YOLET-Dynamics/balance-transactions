@@ -74,9 +74,8 @@ class PurchasesService {
 
     const total = subtotal + vatAmount;
 
-    // Calculate withholding tax if provided
     const withheldPct = input.withholdingPct || 0;
-    const withheldAmount = withheldPct > 0 ? (total * withheldPct) / 100 : 0;
+    const withheldAmount = withheldPct > 0 ? (subtotal * withheldPct) / 100 : 0;
     const netPaid = total - withheldAmount;
 
     const billData = {

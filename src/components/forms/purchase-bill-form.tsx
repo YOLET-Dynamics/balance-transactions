@@ -162,7 +162,7 @@ export function PurchaseBillForm({
   const lines = watch("lines");
 
   // Handle quick-add template selection
-  const handleQuickAdd = (template: typeof PURCHASE_TEMPLATES[0]) => {
+  const handleQuickAdd = (template: (typeof PURCHASE_TEMPLATES)[0]) => {
     append({
       description: template.description,
       unit: template.unit,
@@ -171,19 +171,24 @@ export function PurchaseBillForm({
       discountAmount: 0,
       isVatApplicable: true,
     });
-    
+
     // Scroll to the newly added item
     setTimeout(() => {
-      const lineItems = document.querySelectorAll('[data-line-item]');
+      const lineItems = document.querySelectorAll("[data-line-item]");
       const lastItem = lineItems[lineItems.length - 1];
       if (lastItem) {
-        lastItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        lastItem.scrollIntoView({ behavior: "smooth", block: "center" });
         // Focus on the description field to continue typing
-        const descInput = lastItem.querySelector('input[placeholder="Item description"]') as HTMLInputElement;
+        const descInput = lastItem.querySelector(
+          'input[placeholder="Item description"]'
+        ) as HTMLInputElement;
         if (descInput) {
           descInput.focus();
           // Set cursor at the end of the text
-          descInput.setSelectionRange(descInput.value.length, descInput.value.length);
+          descInput.setSelectionRange(
+            descInput.value.length,
+            descInput.value.length
+          );
         }
       }
     }, 100);
@@ -300,8 +305,8 @@ export function PurchaseBillForm({
 
   const calculateWithholding = () => {
     if (!applyWithholding) return 0;
-    const total = calculateTotal();
-    return (total * withholdingPct) / 100;
+    const subtotal = calculateSubtotal();
+    return (subtotal * withholdingPct) / 100;
   };
 
   const calculateNetPaid = () => {
