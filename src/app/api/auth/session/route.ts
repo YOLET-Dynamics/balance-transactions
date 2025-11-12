@@ -27,6 +27,13 @@ export const GET = createRoute(
         code: organization.code,
         legalName: organization.legalName,
         tradeName: organization.tradeName,
+        subcity: organization.subcity,
+        cityRegion: organization.cityRegion,
+        country: organization.country,
+        tin: organization.tin,
+        vatNumber: organization.vatNumber,
+        phone: organization.phone,
+        email: organization.email,
       },
       membership: {
         id: membership.id,

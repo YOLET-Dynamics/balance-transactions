@@ -42,7 +42,9 @@ import {
   useUpdateInvoice,
 } from "@/lib/hooks/use-sales";
 import { useSession } from "@/lib/hooks/use-session";
+import { useCreatePayment } from "@/lib/hooks/use-payments";
 import { formatDistanceToNow } from "date-fns";
+import { RecordPaymentDialog } from "@/components/dialogs/record-payment-dialog";
 
 export default function InvoiceDetailPage({
   params,
@@ -55,9 +57,11 @@ export default function InvoiceDetailPage({
   const { data: session } = useSession();
   const deleteInvoice = useDeleteInvoice();
   const updateInvoice = useUpdateInvoice();
+  const createPayment = useCreatePayment();
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return `ETB ${new Intl.NumberFormat("en-ET", {
@@ -124,6 +128,32 @@ export default function InvoiceDetailPage({
       id,
       data: { status: newStatus },
     });
+  };
+
+  const handleRecordPayment = (paymentData: any) => {
+    // Create payment linked to this invoice
+    createPayment.mutate(
+      {
+        direction: "Incoming",
+        method: paymentData.method,
+        amount: paymentData.amount,
+        relatedType: "Invoice",
+        relatedId: id,
+        createdBy: paymentData.createdBy,
+        reviewedBy: paymentData.reviewedBy,
+        authorizedBy: paymentData.authorizedBy,
+      },
+      {
+        onSuccess: () => {
+          // Update invoice status to Paid
+          updateInvoice.mutate({
+            id,
+            data: { status: "Paid" },
+          });
+          setShowPaymentDialog(false);
+        },
+      }
+    );
   };
 
   const handlePreviewPdf = async () => {
@@ -261,12 +291,12 @@ export default function InvoiceDetailPage({
           {canApprove() && (
             <>
               <Button
-                onClick={() => handleStatusChange("Paid")}
-                disabled={updateInvoice.isPending}
+                onClick={() => setShowPaymentDialog(true)}
+                disabled={createPayment.isPending || updateInvoice.isPending}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 <Check className="h-4 w-4 mr-2" />
-                Mark as Paid
+                Record Payment
               </Button>
               <Button
                 onClick={() => handleStatusChange("Cancelled")}
@@ -556,6 +586,18 @@ export default function InvoiceDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* Record Payment Dialog */}
+      <RecordPaymentDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        onSubmit={handleRecordPayment}
+        isLoading={createPayment.isPending || updateInvoice.isPending}
+        direction="Incoming"
+        defaultAmount={Number(invoice.netPayable || invoice.total)}
+        documentType="Invoice"
+        documentNumber={invoice.number}
+      />
     </div>
   );
 }

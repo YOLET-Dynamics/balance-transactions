@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Calculator, User } from "lucide-react";
+import { Plus, Trash2, Calculator, User, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -34,6 +35,82 @@ interface PurchaseBillFormProps {
   isLoading?: boolean;
   mode?: "create" | "edit";
 }
+
+// Quick-add templates for common recurring purchases
+const PURCHASE_TEMPLATES = [
+  {
+    id: "rent",
+    label: "Rent",
+    icon: "🏢",
+    description: "Monthly rent for ",
+    unit: "month",
+    quantity: 1,
+    defaultPrice: 0,
+  },
+  {
+    id: "telephone",
+    label: "Telephone",
+    icon: "📞",
+    description: "Telephone bill for ",
+    unit: "month",
+    quantity: 1,
+    defaultPrice: 0,
+  },
+  {
+    id: "internet",
+    label: "Internet",
+    icon: "🌐",
+    description: "Internet service for ",
+    unit: "month",
+    quantity: 1,
+    defaultPrice: 0,
+  },
+  {
+    id: "electricity",
+    label: "Electricity",
+    icon: "⚡",
+    description: "Electricity bill for ",
+    unit: "month",
+    quantity: 1,
+    defaultPrice: 0,
+  },
+  {
+    id: "water",
+    label: "Water",
+    icon: "💧",
+    description: "Water bill for ",
+    unit: "month",
+    quantity: 1,
+    defaultPrice: 0,
+  },
+  {
+    id: "stationery",
+    label: "Stationery",
+    icon: "📝",
+    description: "Office stationery and supplies",
+    unit: "lot",
+    quantity: 1,
+    defaultPrice: 0,
+  },
+  {
+    id: "fuel",
+    label: "Fuel",
+    icon: "⛽",
+    description: "Fuel expenses for ",
+    unit: "liters",
+    quantity: 1,
+    defaultPrice: 0,
+  },
+  {
+    id: "maintenance",
+    label: "Maintenance",
+    icon: "🔧",
+    description: "Maintenance and repairs for ",
+    unit: "service",
+    quantity: 1,
+    defaultPrice: 0,
+  },
+];
 
 export function PurchaseBillForm({
   initialData,
@@ -83,6 +160,34 @@ export function PurchaseBillForm({
   });
 
   const lines = watch("lines");
+
+  // Handle quick-add template selection
+  const handleQuickAdd = (template: typeof PURCHASE_TEMPLATES[0]) => {
+    append({
+      description: template.description,
+      unit: template.unit,
+      quantity: template.quantity,
+      unitPrice: template.defaultPrice,
+      discountAmount: 0,
+      isVatApplicable: true,
+    });
+    
+    // Scroll to the newly added item
+    setTimeout(() => {
+      const lineItems = document.querySelectorAll('[data-line-item]');
+      const lastItem = lineItems[lineItems.length - 1];
+      if (lastItem) {
+        lastItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Focus on the description field to continue typing
+        const descInput = lastItem.querySelector('input[placeholder="Item description"]') as HTMLInputElement;
+        if (descInput) {
+          descInput.focus();
+          // Set cursor at the end of the text
+          descInput.setSelectionRange(descInput.value.length, descInput.value.length);
+        }
+      }
+    }, 100);
+  };
 
   // Auto-fill "Created By" with current user's name (only in create mode)
   useEffect(() => {
@@ -497,9 +602,36 @@ export function PurchaseBillForm({
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Quick Add Templates */}
+          <div className="p-4 bg-gradient-to-r from-brand-yellow-500/10 to-transparent border border-brand-yellow-500/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="h-4 w-4 text-brand-yellow-500" />
+              <h5 className="text-sm font-medium text-white">
+                Quick Add Common Purchases
+              </h5>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {PURCHASE_TEMPLATES.map((template) => (
+                <Badge
+                  key={template.id}
+                  onClick={() => handleQuickAdd(template)}
+                  className="cursor-pointer bg-white/5 hover:bg-brand-yellow-500/20 text-gray-300 hover:text-brand-yellow-400 border-white/10 hover:border-brand-yellow-500/30 transition-all px-3 py-1.5 text-sm"
+                >
+                  <span className="mr-1.5">{template.icon}</span>
+                  {template.label}
+                </Badge>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Click a template to quickly add a pre-filled line item
+            </p>
+          </div>
+
+          {/* Line Items */}
           {fields.map((field, index) => (
             <div
               key={field.id}
+              data-line-item
               className="p-4 bg-white/5 rounded-lg border border-white/10 space-y-4"
             >
               <div className="flex items-start justify-between">

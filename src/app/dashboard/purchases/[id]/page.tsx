@@ -37,9 +37,11 @@ import {
   useUpdatePurchaseBill,
 } from "@/lib/hooks/use-purchases";
 import { useSession } from "@/lib/hooks/use-session";
+import { useCreatePayment } from "@/lib/hooks/use-payments";
 import { formatDistanceToNow } from "date-fns";
 import { axiosInstance } from "@/lib/api/client";
 import { toast } from "sonner";
+import { RecordPaymentDialog } from "@/components/dialogs/record-payment-dialog";
 
 export default function PurchaseBillDetailPage({
   params,
@@ -52,8 +54,10 @@ export default function PurchaseBillDetailPage({
   const { data: session } = useSession();
   const deleteBill = useDeletePurchaseBill();
   const updateBill = useUpdatePurchaseBill();
+  const createPayment = useCreatePayment();
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return `ETB ${new Intl.NumberFormat("en-ET", {
@@ -111,6 +115,36 @@ export default function PurchaseBillDetailPage({
       {
         onSuccess: () => {
           toast.success(`Bill status updated to ${newStatus}`);
+        },
+      }
+    );
+  };
+
+  const handleRecordPayment = (paymentData: any) => {
+    // Create payment linked to this bill
+    createPayment.mutate(
+      {
+        direction: "Outgoing",
+        method: paymentData.method,
+        amount: paymentData.amount,
+        relatedType: "Bill",
+        relatedId: id,
+        createdBy: paymentData.createdBy,
+        reviewedBy: paymentData.reviewedBy,
+        authorizedBy: paymentData.authorizedBy,
+      },
+      {
+        onSuccess: () => {
+          // Update bill status to Paid
+          updateBill.mutate(
+            { id, data: { status: "Paid" } },
+            {
+              onSuccess: () => {
+                toast.success("Payment recorded and bill marked as paid");
+              },
+            }
+          );
+          setShowPaymentDialog(false);
         },
       }
     );
@@ -253,11 +287,11 @@ export default function PurchaseBillDetailPage({
 
           {canApprove() && (
             <Button
-              onClick={() => handleStatusChange("Paid")}
-              disabled={updateBill.isPending}
+              onClick={() => setShowPaymentDialog(true)}
+              disabled={createPayment.isPending || updateBill.isPending}
               className="bg-green-600 text-white hover:bg-green-700"
             >
-              Mark as Paid
+              Record Payment
             </Button>
           )}
 
@@ -538,6 +572,18 @@ export default function PurchaseBillDetailPage({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Record Payment Dialog */}
+      <RecordPaymentDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        onSubmit={handleRecordPayment}
+        isLoading={createPayment.isPending || updateBill.isPending}
+        direction="Outgoing"
+        defaultAmount={Number(bill.netPaid || bill.total)}
+        documentType="Bill"
+        documentNumber={bill.number}
+      />
     </div>
   );
 }

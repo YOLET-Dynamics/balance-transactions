@@ -12,12 +12,10 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
-  Search,
   Bell,
-  Loader2,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useLogout } from "@/lib/hooks/use-auth";
 import { useSession } from "@/lib/hooks/use-session";
 
@@ -77,6 +75,15 @@ export default function DashboardLayout({
       icon: Receipt,
       active: pathname.startsWith("/dashboard/payments"),
     },
+    {
+      href: "/dashboard/products",
+      label: "Products",
+      icon: Package,
+      active: pathname.startsWith("/dashboard/products"),
+    },
+  ];
+
+  const bottomNavItems = [
     {
       href: "/dashboard/settings",
       label: "Settings",
@@ -144,7 +151,28 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-2">
+          {bottomNavItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  item.active
+                    ? "bg-brand-yellow-500 text-black"
+                    : "text-gray-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {sidebarOpen && (
+                  <span className="text-sm font-medium">{item.label}</span>
+                )}
+              </Link>
+            );
+          })}
+          
+
           <button
             onClick={handleLogout}
             disabled={logoutMutation.isPending}

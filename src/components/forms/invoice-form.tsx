@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Calculator, Users } from "lucide-react";
+import { Plus, Trash2, Calculator, Users, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +28,7 @@ import {
 } from "@/lib/validation/schemas";
 import { useCustomers, useCreateCustomer } from "@/lib/hooks/use-customers";
 import { useSession } from "@/lib/hooks/use-session";
+import { useItems } from "@/lib/hooks/use-items";
 
 type InvoiceFormData = z.infer<typeof createSalesInvoiceSchema>;
 
@@ -55,6 +57,8 @@ export function InvoiceForm({
   const createCustomer = useCreateCustomer();
   const customers = customersData?.customers || [];
   const { data: session } = useSession();
+  const { data: itemsData } = useItems({ isActive: true, limit: 100 });
+  const items = (itemsData as any)?.items || [];
 
   const {
     register,
@@ -143,6 +147,35 @@ export function InvoiceForm({
   const lines = watch("lines");
   const buyerType = watch("buyerType");
   const goodsOrService = watch("goodsOrService");
+
+  // Handle quick-add product selection
+  const handleQuickAddProduct = (item: any) => {
+    append({
+      description:
+        item.name + (item.description ? ` - ${item.description}` : ""),
+      unit: item.unit,
+      quantity: 1,
+      unitPrice: Number(item.defaultPrice),
+      isVatApplicable: item.vatApplicable,
+    });
+
+    // Scroll to the newly added item
+    setTimeout(() => {
+      const lineItems = document.querySelectorAll("[data-line-item]");
+      const lastItem = lineItems[lineItems.length - 1];
+      if (lastItem) {
+        lastItem.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Focus on the quantity field for easy adjustment
+        const qtyInput = lastItem.querySelector(
+          'input[type="number"]'
+        ) as HTMLInputElement;
+        if (qtyInput) {
+          qtyInput.focus();
+          qtyInput.select();
+        }
+      }
+    }, 100);
+  };
 
   const calculateLineTotals = () => {
     return lines.map((line) => {
@@ -558,9 +591,44 @@ export function InvoiceForm({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Quick Add Products */}
+            {items.length > 0 && (
+              <div className="p-4 bg-gradient-to-r from-brand-yellow-500/10 to-transparent border border-brand-yellow-500/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <Package className="h-4 w-4 text-brand-yellow-500" />
+                  <h5 className="text-sm font-medium text-white">
+                    Quick Add Products
+                  </h5>
+                  <span className="text-xs text-gray-500">
+                    ({items.length} products available)
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                  {items.slice(0, 20).map((item: any) => (
+                    <Badge
+                      key={item.id}
+                      onClick={() => handleQuickAddProduct(item)}
+                      className="cursor-pointer bg-white/5 hover:bg-brand-yellow-500/20 text-gray-300 hover:text-brand-yellow-400 border-white/10 hover:border-brand-yellow-500/30 transition-all px-3 py-1.5 text-sm"
+                    >
+                      {item.name}
+                      <span className="ml-2 text-xs opacity-70">
+                        ETB {Number(item.defaultPrice).toFixed(2)}
+                      </span>
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Click a product to add with default price (adjustable after
+                  adding)
+                </p>
+              </div>
+            )}
+
+            {/* Line Items */}
             {fields.map((field, index) => (
               <div
                 key={field.id}
+                data-line-item
                 className="p-4 rounded-lg bg-white/5 border border-white/10 space-y-4"
               >
                 <div className="flex items-center justify-between mb-2">

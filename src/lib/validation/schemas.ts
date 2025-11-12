@@ -181,21 +181,6 @@ export const updateCustomerSchema = partySchema.partial();
 export const createVendorSchema = partySchema;
 export const updateVendorSchema = partySchema.partial();
 
-export const createItemSchema = z.object({
-  type: ItemTypeEnum,
-  code: z.string().min(1).max(50),
-  name: z.string().min(1).max(255),
-  description: z.string().optional(),
-  unit: z.string().min(1).max(50),
-  sku: z.string().max(100).optional(),
-  barcode: z.string().max(100).optional(),
-  defaultPrice: moneySchema,
-  vatApplicable: z.boolean().default(true),
-  isActive: z.boolean().default(true),
-});
-
-export const updateItemSchema = createItemSchema.partial();
-
 export const createTaxRateSchema = z.object({
   name: z.string().min(1).max(100),
   ratePct: z.number().min(0).max(100),
@@ -290,6 +275,21 @@ export const createPaymentSchema = z.object({
 });
 
 export const updatePaymentSchema = createPaymentSchema.partial();
+
+export const createItemSchema = z.object({
+  type: ItemTypeEnum,
+  code: z.string().min(1).max(50),
+  name: z.string().min(1).max(255),
+  description: z.string().max(1000).optional(),
+  unit: z.string().min(1).max(20),
+  sku: z.string().max(100).optional(),
+  barcode: z.string().max(100).optional(),
+  defaultPrice: moneySchema,
+  vatApplicable: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const updateItemSchema = createItemSchema.partial();
 
 export const inviteMemberSchema = z.object({
   email: emailSchema,
