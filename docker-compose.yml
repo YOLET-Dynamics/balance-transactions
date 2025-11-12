@@ -48,8 +48,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://balance:${POSTGRES_PASSWORD:-balance_secure_password}@postgres:5432/balance
-      REDIS_ADDR: redis://redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_password}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379
       RESEND_KEY: ${RESEND_KEY}
       RESEND_SENDER: ${RESEND_SENDER}
       UPLOADTHING_TOKEN: ${UPLOADTHING_TOKEN}
