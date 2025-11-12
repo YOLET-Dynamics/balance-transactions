@@ -43,7 +43,9 @@ export default function NewInvoicePage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-white">Create New Invoice</h1>
+            <h1 className="text-3xl font-bold text-white">
+              Create New Invoice
+            </h1>
             <p className="text-gray-400 mt-1">
               Fill in the details to create a sales invoice
             </p>
@@ -61,4 +63,3 @@ export default function NewInvoicePage() {
     </div>
   );
 }
-

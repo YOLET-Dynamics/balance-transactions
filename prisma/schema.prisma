@@ -415,6 +415,8 @@ model PurchaseBill {
   paymentMethod PaymentMethod @map("payment_method")
   paymentRef    String?       @map("payment_ref")
 
+  status InvoiceStatus @default(Pending)
+
   createdBy    String? @map("created_by")
   reviewedBy   String? @map("reviewed_by")
   authorizedBy String? @map("authorized_by")

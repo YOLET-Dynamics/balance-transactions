@@ -83,7 +83,7 @@ export default function DashboardPage() {
               className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold"
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Invoice
+              New Sales
             </Button>
             <Button
               variant="outline"
@@ -91,7 +91,7 @@ export default function DashboardPage() {
               disabled
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Bill
+              New Purchase
             </Button>
             <Button
               variant="outline"

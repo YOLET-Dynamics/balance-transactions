@@ -6,7 +6,6 @@ import type {
   ListOptions,
 } from "../../domain/repositories/sales.repository";
 
-// Helper to serialize Prisma data (Decimal -> number, Date -> string)
 function serializeInvoice(invoice: any): any {
   if (!invoice) return null;
 

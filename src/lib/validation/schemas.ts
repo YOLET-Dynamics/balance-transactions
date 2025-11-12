@@ -135,7 +135,9 @@ export const resetPasswordSchema = z
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
-export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
+export type RequestPasswordResetInput = z.infer<
+  typeof requestPasswordResetSchema
+>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export const createOrganizationSchema = z.object({
@@ -263,6 +265,8 @@ export const createPurchaseBillSchema = z.object({
   reason: z.string().min(1),
   paymentMethod: PaymentMethodEnum,
   paymentRef: z.string().max(255).optional(),
+
+  status: InvoiceStatusEnum.optional(),
 
   lines: z.array(purchaseBillLineSchema).min(1),
 

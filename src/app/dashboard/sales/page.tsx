@@ -138,7 +138,7 @@ export default function SalesPage() {
           className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold"
         >
           <Plus className="mr-2 h-4 w-4" />
-          New Invoice
+          New Sales
         </Button>
       </div>
 
