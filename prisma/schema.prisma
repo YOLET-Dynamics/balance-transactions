@@ -1,0 +1,580 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+model Organization {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code             String  @unique
+  legalName        String  @map("legal_name")
+  tradeName        String? @map("trade_name")
+  logoAttachmentId String? @map("logo_attachment_id") @db.Uuid
+
+  // Address
+  subcity    String?
+  cityRegion String? @map("city_region")
+  country    String  @default("ET")
+
+  // Tax & Contact
+  tin       String?
+  vatNumber String? @map("vat_number")
+  phone     String?
+  email     String?
+  website   String?
+
+  defaultCurrency String @default("ETB") @map("default_currency")
+
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  logoAttachment  Attachment?      @relation("OrgLogo", fields: [logoAttachmentId], references: [id])
+  memberships     Membership[]
+  sessions        Session[]
+  customers       Customer[]
+  vendors         Vendor[]
+  items           Item[]
+  taxRates        TaxRate[]
+  salesInvoices   SalesInvoice[]
+  purchaseBills   PurchaseBill[]
+  payments        Payment[]
+  attachments     Attachment[]     @relation("OrgAttachments")
+  numberSequences NumberSequence[]
+  auditLogs       AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  firstName       String?   @map("first_name")
+  lastName        String?   @map("last_name")
+  phone           String?
+  isEmailVerified Boolean   @default(false) @map("is_email_verified")
+  lastLoginAt     DateTime? @map("last_login_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  memberships             Membership[]
+  sessions                Session[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+
+  @@map("users")
+}
+
+enum MemberRole {
+  Owner
+  Admin
+  Manager
+  Staff
+  Viewer
+}
+
+model Membership {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String     @map("user_id") @db.Uuid
+  orgId      String     @map("org_id") @db.Uuid
+  role       MemberRole
+  isActive   Boolean    @default(true) @map("is_active")
+  invitedAt  DateTime   @default(now()) @map("invited_at")
+  acceptedAt DateTime?  @map("accepted_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+  @@map("memberships")
+}
+
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  ip        String?
+  userAgent String?  @map("user_agent")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([orgId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ============================================
+// PARTIES & CATALOG
+// ============================================
+
+enum PartyType {
+  Company
+  Individual
+}
+
+model Customer {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String    @map("org_id") @db.Uuid
+  type      PartyType
+  legalName String?   @map("legal_name")
+  tradeName String?   @map("trade_name")
+
+  // Address
+  subcity    String?
+  cityRegion String? @map("city_region")
+  country    String  @default("ET")
+
+  // Tax & Contact
+  tin           String?
+  vatNumber     String? @map("vat_number")
+  phone         String?
+  email         String?
+  contactPerson String? @map("contact_person")
+  notes         String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, legalName])
+  @@index([orgId])
+  @@map("customers")
+}
+
+model Vendor {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String    @map("org_id") @db.Uuid
+  type      PartyType
+  legalName String?   @map("legal_name")
+  tradeName String?   @map("trade_name")
+
+  // Address
+  subcity    String?
+  cityRegion String? @map("city_region")
+  country    String  @default("ET")
+
+  // Tax & Contact
+  tin           String?
+  vatNumber     String? @map("vat_number")
+  phone         String?
+  email         String?
+  contactPerson String? @map("contact_person")
+  notes         String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, legalName])
+  @@index([orgId])
+  @@map("vendors")
+}
+
+enum ItemType {
+  Good
+  Service
+}
+
+model Item {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  type          ItemType
+  code          String
+  name          String
+  description   String?  @db.Text
+  unit          String
+  sku           String?
+  barcode       String?
+  defaultPrice  Decimal  @map("default_price") @db.Decimal(19, 2)
+  vatApplicable Boolean  @default(true) @map("vat_applicable")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization      Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  salesInvoiceLines SalesInvoiceLine[]
+  purchaseBillLines PurchaseBillLine[]
+
+  @@unique([orgId, code])
+  @@index([orgId])
+  @@map("items")
+}
+
+model TaxRate {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String  @map("org_id") @db.Uuid
+  name      String
+  ratePct   Decimal @map("rate_pct") @db.Decimal(5, 2)
+  isDefault Boolean @default(false) @map("is_default")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, name])
+  @@index([orgId])
+  @@map("tax_rates")
+}
+
+// ============================================
+// SALES
+// ============================================
+
+enum InvoiceStatus {
+  Draft
+  Pending
+  Paid
+  Overdue
+  Cancelled
+}
+
+enum PaymentMethod {
+  Cash
+  Cheque
+  BankTransfer
+  POS
+  Mobile
+}
+
+enum GoodsOrService {
+  Goods
+  Service
+}
+
+model SalesInvoice {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId    String @map("org_id") @db.Uuid
+  number   String
+  year     Int
+  seqValue Int    @map("seq_value")
+
+  // Buyer snapshot (JSON)
+  buyerType       PartyType? @map("buyer_type")
+  buyerLegalName  String?    @map("buyer_legal_name")
+  buyerTradeName  String?    @map("buyer_trade_name")
+  buyerSubcity    String?    @map("buyer_subcity")
+  buyerCityRegion String?    @map("buyer_city_region")
+  buyerCountry    String?    @map("buyer_country")
+  buyerTin        String?    @map("buyer_tin")
+  buyerVatNumber  String?    @map("buyer_vat_number")
+  buyerPhone      String?    @map("buyer_phone")
+
+  currency     String  @default("ETB")
+  subtotal     Decimal @db.Decimal(19, 2)
+  vatAmount    Decimal @map("vat_amount") @db.Decimal(19, 2)
+  total        Decimal @db.Decimal(19, 2)
+  totalInWords String  @map("total_in_words")
+
+  goodsOrService GoodsOrService @map("goods_or_service")
+  withheldPct    Decimal?       @map("withheld_pct") @db.Decimal(5, 2)
+  withheldAmount Decimal?       @map("withheld_amount") @db.Decimal(19, 2)
+  netPayable     Decimal        @map("net_payable") @db.Decimal(19, 2)
+
+  paymentMethod PaymentMethod @map("payment_method")
+  paymentRef    String?       @map("payment_ref")
+
+  status InvoiceStatus @default(Pending)
+
+  createdBy    String? @map("created_by")
+  reviewedBy   String? @map("reviewed_by")
+  authorizedBy String? @map("authorized_by")
+  receivedBy   String? @map("received_by")
+
+  notes           String? @db.Text
+  pdfAttachmentId String? @map("pdf_attachment_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization  Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  pdfAttachment Attachment?        @relation("InvoicePDF", fields: [pdfAttachmentId], references: [id])
+  lines         SalesInvoiceLine[]
+  attachments   SalesAttachment[]
+
+  @@unique([orgId, number])
+  @@index([orgId])
+  @@index([year])
+  @@map("sales_invoices")
+}
+
+model SalesInvoiceLine {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId       String  @map("invoice_id") @db.Uuid
+  seq             Int
+  itemId          String? @map("item_id") @db.Uuid
+  description     String
+  unit            String
+  quantity        Decimal @db.Decimal(19, 4)
+  unitPrice       Decimal @map("unit_price") @db.Decimal(19, 2)
+  lineTotal       Decimal @map("line_total") @db.Decimal(19, 2)
+  isVatApplicable Boolean @default(true) @map("is_vat_applicable")
+
+  invoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  item    Item?        @relation(fields: [itemId], references: [id])
+
+  @@index([invoiceId])
+  @@map("sales_invoice_lines")
+}
+
+model SalesAttachment {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId String  @map("invoice_id") @db.Uuid
+  fileKey   String  @map("file_key")
+  url       String
+  mime      String
+  size      Int
+  title     String?
+  notes     String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  invoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("sales_attachments")
+}
+
+// ============================================
+// PURCHASES
+// ============================================
+
+model PurchaseBill {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId    String @map("org_id") @db.Uuid
+  number   String
+  year     Int
+  seqValue Int    @map("seq_value")
+
+  // Vendor snapshot
+  vendorLegalName  String? @map("vendor_legal_name")
+  vendorTradeName  String? @map("vendor_trade_name")
+  vendorSubcity    String? @map("vendor_subcity")
+  vendorCityRegion String? @map("vendor_city_region")
+  vendorCountry    String? @map("vendor_country")
+  vendorTin        String? @map("vendor_tin")
+  vendorVatNumber  String? @map("vendor_vat_number")
+  vendorPhone      String? @map("vendor_phone")
+
+  currency  String  @default("ETB")
+  subtotal  Decimal @db.Decimal(19, 2)
+  vatAmount Decimal @map("vat_amount") @db.Decimal(19, 2)
+  total     Decimal @db.Decimal(19, 2)
+
+  withheldPct    Decimal? @map("withheld_pct") @db.Decimal(5, 2)
+  withheldAmount Decimal? @map("withheld_amount") @db.Decimal(19, 2)
+  netPaid        Decimal  @map("net_paid") @db.Decimal(19, 2)
+
+  reason        String        @db.Text
+  paymentMethod PaymentMethod @map("payment_method")
+  paymentRef    String?       @map("payment_ref")
+
+  createdBy    String? @map("created_by")
+  reviewedBy   String? @map("reviewed_by")
+  authorizedBy String? @map("authorized_by")
+
+  pdfAttachmentId String? @map("pdf_attachment_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization  Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  pdfAttachment Attachment?        @relation("BillPDF", fields: [pdfAttachmentId], references: [id])
+  lines         PurchaseBillLine[]
+
+  @@unique([orgId, number])
+  @@index([orgId])
+  @@index([year])
+  @@map("purchase_bills")
+}
+
+model PurchaseBillLine {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  billId          String  @map("bill_id") @db.Uuid
+  seq             Int
+  itemId          String? @map("item_id") @db.Uuid
+  description     String
+  unit            String
+  quantity        Decimal @db.Decimal(19, 4)
+  unitPrice       Decimal @map("unit_price") @db.Decimal(19, 2)
+  discountAmount  Decimal @default(0) @map("discount_amount") @db.Decimal(19, 2)
+  lineTotal       Decimal @map("line_total") @db.Decimal(19, 2)
+  isVatApplicable Boolean @default(true) @map("is_vat_applicable")
+
+  bill PurchaseBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  item Item?        @relation(fields: [itemId], references: [id])
+
+  @@index([billId])
+  @@map("purchase_bill_lines")
+}
+
+// ============================================
+// PAYMENTS
+// ============================================
+
+enum PaymentDirection {
+  Incoming
+  Outgoing
+}
+
+enum RelatedType {
+  Invoice
+  Bill
+  None
+}
+
+model Payment {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String           @map("org_id") @db.Uuid
+  direction PaymentDirection
+  method    PaymentMethod
+  amount    Decimal          @db.Decimal(19, 2)
+  currency  String           @default("ETB")
+
+  relatedType RelatedType @map("related_type")
+  relatedId   String?     @map("related_id") @db.Uuid
+
+  voucherPdfId String? @map("voucher_pdf_id") @db.Uuid
+
+  createdBy    String? @map("created_by")
+  reviewedBy   String? @map("reviewed_by")
+  authorizedBy String? @map("authorized_by")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  voucherPdf   Attachment?  @relation("PaymentVoucher", fields: [voucherPdfId], references: [id])
+
+  @@index([orgId])
+  @@map("payments")
+}
+
+// ============================================
+// ATTACHMENTS & SEQUENCES
+// ============================================
+
+enum AttachmentKind {
+  SalesPDF
+  PaymentPDF
+  PurchasePDF
+  Logo
+  Other
+}
+
+model Attachment {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String         @map("org_id") @db.Uuid
+  fileKey   String         @map("file_key")
+  url       String
+  mime      String
+  size      Int
+  kind      AttachmentKind
+  createdBy String?        @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization    Organization   @relation("OrgAttachments", fields: [orgId], references: [id], onDelete: Cascade)
+  orgLogo         Organization[] @relation("OrgLogo")
+  invoices        SalesInvoice[] @relation("InvoicePDF")
+  bills           PurchaseBill[] @relation("BillPDF")
+  paymentVouchers Payment[]      @relation("PaymentVoucher")
+
+  @@index([orgId])
+  @@map("attachments")
+}
+
+enum DocType {
+  CS // Cash Sales
+  PV // Payment Voucher
+  PB // Purchase Bill
+}
+
+model NumberSequence {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String  @map("org_id") @db.Uuid
+  docType   DocType @map("doc_type")
+  year      Int
+  nextValue Int     @default(1) @map("next_value")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, docType, year])
+  @@index([orgId])
+  @@map("number_sequences")
+}
+
+// ============================================
+// AUDIT & OPS
+// ============================================
+
+model AuditLog {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId       String  @map("org_id") @db.Uuid
+  actorUserId String? @map("actor_user_id") @db.Uuid
+  action      String
+  entity      String
+  entityId    String? @map("entity_id") @db.Uuid
+  ip          String?
+  ua          String? @map("user_agent")
+  changesJson Json?   @map("changes_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([actorUserId])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

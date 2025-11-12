@@ -40,6 +40,12 @@ const config: Config = {
           "Noto Sans",
           "sans-serif",
         ],
+        logo: [
+          "var(--font-space-grotesk)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -84,6 +90,12 @@ const config: Config = {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        brand: {
+          yellow: {
+            "500": "#F5B800",
+            "600": "#D9A400",
+          },
         },
       },
       borderRadius: {

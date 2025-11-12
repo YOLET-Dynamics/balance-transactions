@@ -1,38 +1,68 @@
+version: '3.8'
+
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:16-alpine
     container_name: balance-postgres
     restart: unless-stopped
-    ports:
-      - "5432:5432"
     environment:
+      POSTGRES_DB: balance
       POSTGRES_USER: balance
       POSTGRES_PASSWORD: balanceDB123!
-      POSTGRES_DB: balance-transactions
-      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
-    networks:
-      - balance-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U balance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: balance-redis
     restart: unless-stopped
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secure_password}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - balance-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-networks:
-  balance-network:
-    driver: bridge
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: balance-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://balance:${POSTGRES_PASSWORD:-balance_secure_password}@postgres:5432/balance
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_password}
+      RESEND_KEY: ${RESEND_KEY}
+      RESEND_SENDER: ${RESEND_SENDER}
+      UPLOADTHING_TOKEN: ${UPLOADTHING_TOKEN}
+      SESSION_SECRET: ${SESSION_SECRET:-change_me_in_production}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   postgres_data:

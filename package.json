@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.0.0",
@@ -15,6 +19,8 @@
     "@fortawesome/react-fontawesome": "^0.2.3",
     "@hcaptcha/react-hcaptcha": "^1.12.0",
     "@hookform/resolvers": "^3.10.0",
+    "@node-rs/argon2": "^2.0.0",
+    "@prisma/client": "^6.2.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
     "@radix-ui/react-aspect-ratio": "1.1.1",
@@ -49,6 +55,7 @@
     "@tanstack/react-query": "^5.80.7",
     "@tanstack/react-query-devtools": "^5.80.7",
     "@types/three": "^0.180.0",
+    "@uploadthing/react": "^7.3.3",
     "autoprefixer": "^10.4.20",
     "axios": "^1.9.0",
     "class-variance-authority": "^0.7.1",
@@ -59,12 +66,13 @@
     "framer-motion": "^12.15.0",
     "hast-util-sanitize": "^5.0.2",
     "input-otp": "1.4.1",
+    "ioredis": "^5.8.2",
     "katex": "^0.16.22",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
     "next-themes": "^0.4.4",
     "react": "^19",
-    "react-day-picker": "9.8.1",
+    "react-day-picker": "9.11.1",
     "react-dom": "^19",
     "react-hook-form": "^7.56.4",
     "react-markdown": "^10.1.0",
@@ -78,18 +86,45 @@
     "remark-math": "^6.0.0",
     "resend": "^4.7.0",
     "sonner": "^1.7.1",
+    "swr": "^2.3.6",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.180.0",
-    "vaul": "^0.9.9",
+    "uploadthing": "^7.4.2",
+    "vaul": "^1.1.2",
     "zod": "^3.25.32"
   },
   "devDependencies": {
+    "@types/ioredis": "^4.28.10",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "postcss": "^8",
+    "prisma": "^6.2.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
-  }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ],
+    "ignoredBuiltDependencies": [
+      "msgpackr-extract",
+      "sharp"
+    ]
+  },
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOLET-Dynamics/balance-transactions.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/YOLET-Dynamics/balance-transactions/issues"
+  },
+  "homepage": "https://github.com/YOLET-Dynamics/balance-transactions#readme"
 }
