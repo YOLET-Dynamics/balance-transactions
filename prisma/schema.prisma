@@ -275,6 +275,11 @@ enum InvoiceStatus {
   Cancelled
 }
 
+enum InvoiceType {
+  Cash
+  Credit
+}
+
 enum PaymentMethod {
   Cash
   Cheque
@@ -319,6 +324,11 @@ model SalesInvoice {
 
   paymentMethod PaymentMethod @map("payment_method")
   paymentRef    String?       @map("payment_ref")
+
+  invoiceType InvoiceType   @default(Cash) @map("invoice_type")
+  invoiceDate DateTime      @default(now()) @map("invoice_date")
+  dueDate     DateTime      @map("due_date")
+  paidDate    DateTime?     @map("paid_date")
 
   status InvoiceStatus @default(Pending)
 
@@ -533,9 +543,10 @@ model Attachment {
 }
 
 enum DocType {
-  CS // Cash Sales
-  PV // Payment Voucher
-  PB // Purchase Bill
+  CS   // Cash Sales
+  PV   // Payment Voucher
+  PB   // Purchase Bill
+  PROD // Product
 }
 
 model NumberSequence {

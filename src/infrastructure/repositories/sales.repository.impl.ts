@@ -19,6 +19,9 @@ function serializeInvoice(invoice: any): any {
       ? Number(invoice.withheldAmount)
       : null,
     netPayable: invoice.netPayable ? Number(invoice.netPayable) : 0,
+    invoiceDate: invoice.invoiceDate ? invoice.invoiceDate.toISOString() : null,
+    dueDate: invoice.dueDate ? invoice.dueDate.toISOString() : null,
+    paidDate: invoice.paidDate ? invoice.paidDate.toISOString() : null,
     createdAt: invoice.createdAt ? invoice.createdAt.toISOString() : null,
     updatedAt: invoice.updatedAt ? invoice.updatedAt.toISOString() : null,
     lines:
@@ -66,6 +69,11 @@ export class SalesRepository implements ISalesRepository {
 
           paymentMethod: data.paymentMethod,
           paymentRef: data.paymentRef,
+
+          invoiceType: data.invoiceType,
+          invoiceDate: data.invoiceDate,
+          dueDate: data.dueDate,
+          paidDate: data.paidDate,
 
           status: data.status || "Pending",
 

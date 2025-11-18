@@ -43,7 +43,6 @@ export function ProductForm({
     resolver: zodResolver(createItemSchema),
     defaultValues: initialData || {
       type: "Good",
-      code: "",
       name: "",
       description: "",
       unit: "pcs",
@@ -90,25 +89,13 @@ export function ProductForm({
                 )}
               </div>
 
-              {/* Code */}
-              <div className="space-y-2">
-                <Label htmlFor="code" className="text-gray-300">
-                  Product Code *
-                </Label>
-                <Input
-                  id="code"
-                  {...register("code")}
-                  className="bg-white/5 border-white/10 text-white"
-                  placeholder="e.g., PROD-001"
-                  disabled={mode === "edit"}
-                />
-                {errors.code && (
-                  <p className="text-red-400 text-sm">{errors.code.message}</p>
-                )}
-                {mode === "edit" && (
-                  <p className="text-gray-500 text-sm">Product code cannot be changed</p>
-                )}
-              </div>
+              {mode === "create" && (
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-300">
+                    ℹ️ Product code will be auto-generated when you create the product
+                  </p>
+                </div>
+              )}
 
               {/* Name */}
               <div className="space-y-2">

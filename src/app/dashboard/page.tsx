@@ -86,17 +86,17 @@ export default function DashboardPage() {
               New Sales
             </Button>
             <Button
+              onClick={() => router.push("/dashboard/purchases/new")}
               variant="outline"
               className="border-white/20 text-white hover:bg-white/5"
-              disabled
             >
               <Plus className="mr-2 h-4 w-4" />
               New Purchase
             </Button>
             <Button
+              onClick={() => router.push("/dashboard/payments/new")}
               variant="outline"
               className="border-white/20 text-white hover:bg-white/5"
-              disabled
             >
               <Plus className="mr-2 h-4 w-4" />
               Record Payment

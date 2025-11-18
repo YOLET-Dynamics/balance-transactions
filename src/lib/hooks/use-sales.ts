@@ -35,6 +35,11 @@ export interface Invoice {
   paymentMethod: string;
   paymentRef?: string | null;
 
+  invoiceType: "Cash" | "Credit";
+  invoiceDate: string;
+  dueDate: string;
+  paidDate?: string | null;
+
   status: "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
 
   // Personnel

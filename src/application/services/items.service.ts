@@ -5,10 +5,10 @@ import type {
   ListItemsOptions,
 } from "@/domain/repositories/items.repository";
 import { NotFoundError } from "@/lib/utils/errors";
+import { sequenceService } from "./sequence.service";
 
 interface CreateItemInput {
   type: ItemType;
-  code: string;
   name: string;
   description?: string;
   unit: string;
@@ -22,14 +22,22 @@ interface CreateItemInput {
 class ItemsService {
   private itemsRepo = itemsRepository;
 
-  async createItem(orgId: string, input: CreateItemInput): Promise<Item> {
-    // Check if code already exists
-    const existing = await this.itemsRepo.findByCode(orgId, input.code);
-    if (existing) {
-      throw new Error("Item code already exists");
-    }
+  async createItem(
+    orgId: string,
+    orgCode: string,
+    input: CreateItemInput
+  ): Promise<Item> {
+    // Auto-generate product code
+    const productNumber = await sequenceService.allocateNext(
+      orgId,
+      orgCode,
+      "PROD"
+    );
 
-    return await this.itemsRepo.create(orgId, input);
+    return await this.itemsRepo.create(orgId, {
+      ...input,
+      code: productNumber.full,
+    });
   }
 
   async getItemById(orgId: string, id: string): Promise<Item> {
@@ -49,14 +57,6 @@ class ItemsService {
     id: string,
     input: Partial<CreateItemInput>
   ): Promise<Item> {
-    // If code is being updated, check if it already exists
-    if (input.code) {
-      const existing = await this.itemsRepo.findByCode(orgId, input.code);
-      if (existing && existing.id !== id) {
-        throw new Error("Item code already exists");
-      }
-    }
-
     return await this.itemsRepo.update(orgId, id, input);
   }
 
@@ -66,4 +66,3 @@ class ItemsService {
 }
 
 export const itemsService = new ItemsService();
-

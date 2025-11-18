@@ -215,41 +215,59 @@ interface SalesInvoicePDFProps {
 export const SalesInvoicePDF: React.FC<SalesInvoicePDFProps> = ({
   invoice,
   organization,
-}) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      <View style={styles.header}>
-        <Text style={styles.invoiceTitle}>Cash Sales Attachment</Text>
-      </View>
+}) => {
+  const isCashSale = invoice.invoiceType === "Cash";
+  const documentTitle = isCashSale ? "Cash Sales Attachment" : "Invoice";
+  const documentNumberLabel = isCashSale ? "CSA No" : "Invoice No";
 
-      {/* Metadata Section */}
-      <View style={styles.metadata}>
-        <View style={styles.metadataLeft}>
-          <Text style={styles.metaLabel}>CSA No</Text>
-          <Text style={styles.metaValue}>{invoice.number}</Text>
-
-          <Text style={styles.metaLabel}>ISSUE DATE</Text>
-          <Text style={styles.metaValue}>
-            {invoice.createdAt
-              ? new Date(invoice.createdAt).toLocaleDateString("en-US", {
-                  month: "2-digit",
-                  day: "2-digit",
-                  year: "numeric",
-                })
-              : "N/A"}
-          </Text>
-
-          <Text style={styles.metaLabel}>DUE DATE</Text>
-          <Text style={styles.metaValue}>
-            {invoice.createdAt
-              ? new Date(invoice.createdAt).toLocaleDateString("en-US", {
-                  month: "2-digit",
-                  day: "2-digit",
-                  year: "numeric",
-                })
-              : "N/A"}
-          </Text>
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <Text style={styles.invoiceTitle}>{documentTitle}</Text>
         </View>
+
+        {/* Metadata Section */}
+        <View style={styles.metadata}>
+          <View style={styles.metadataLeft}>
+            <Text style={styles.metaLabel}>{documentNumberLabel}</Text>
+            <Text style={styles.metaValue}>{invoice.number}</Text>
+
+            <Text style={styles.metaLabel}>INVOICE DATE</Text>
+            <Text style={styles.metaValue}>
+              {invoice.invoiceDate
+                ? new Date(invoice.invoiceDate).toLocaleDateString("en-US", {
+                    month: "2-digit",
+                    day: "2-digit",
+                    year: "numeric",
+                  })
+                : "N/A"}
+            </Text>
+
+            <Text style={styles.metaLabel}>DUE DATE</Text>
+            <Text style={styles.metaValue}>
+              {invoice.dueDate
+                ? new Date(invoice.dueDate).toLocaleDateString("en-US", {
+                    month: "2-digit",
+                    day: "2-digit",
+                    year: "numeric",
+                  })
+                : "N/A"}
+            </Text>
+
+            {invoice.paidDate && (
+              <>
+                <Text style={styles.metaLabel}>PAID DATE</Text>
+                <Text style={styles.metaValue}>
+                  {new Date(invoice.paidDate).toLocaleDateString("en-US", {
+                    month: "2-digit",
+                    day: "2-digit",
+                    year: "numeric",
+                  })}
+                </Text>
+              </>
+            )}
+          </View>
 
         <View style={styles.metadataRight}>
           <Text style={styles.metaLabel}>FROM</Text>
@@ -421,4 +439,5 @@ export const SalesInvoicePDF: React.FC<SalesInvoicePDFProps> = ({
       </View>
     </Page>
   </Document>
-);
+  );
+};

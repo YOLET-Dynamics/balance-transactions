@@ -40,7 +40,7 @@ import {
   Loader2,
   ArrowUpDown,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 
 export default function SalesPage() {
   const router = useRouter();
@@ -88,6 +88,23 @@ export default function SalesPage() {
         {status}
       </Badge>
     );
+  };
+
+  const getTypeBadge = (type: string) => {
+    return type === "Cash" ? (
+      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+        💵 Cash
+      </Badge>
+    ) : (
+      <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+        📅 Credit
+      </Badge>
+    );
+  };
+
+  const isOverdue = (dueDate: string, status: string) => {
+    if (status === "Paid") return false;
+    return new Date(dueDate) < new Date();
   };
 
   if (isLoading) {
@@ -221,11 +238,11 @@ export default function SalesPage() {
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-white/5">
                       <TableHead className="text-gray-300">Invoice #</TableHead>
+                      <TableHead className="text-gray-300">Type</TableHead>
                       <TableHead className="text-gray-300">Customer</TableHead>
-                      <TableHead className="text-gray-300">TIN</TableHead>
                       <TableHead className="text-gray-300">Amount</TableHead>
+                      <TableHead className="text-gray-300">Due Date</TableHead>
                       <TableHead className="text-gray-300">Status</TableHead>
-                      <TableHead className="text-gray-300">Created</TableHead>
                       <TableHead className="text-gray-300 text-right">
                         Actions
                       </TableHead>
@@ -238,30 +255,39 @@ export default function SalesPage() {
                         onClick={() =>
                           router.push(`/dashboard/sales/${invoice.id}`)
                         }
-                        className="border-white/10 hover:bg-white/5 cursor-pointer"
+                        className={`border-white/10 hover:bg-white/5 cursor-pointer ${
+                          isOverdue(invoice.dueDate, invoice.status)
+                            ? "bg-red-500/5"
+                            : ""
+                        }`}
                       >
                         <TableCell className="font-medium text-white">
                           {invoice.number}
                         </TableCell>
+                        <TableCell>{getTypeBadge(invoice.invoiceType)}</TableCell>
                         <TableCell className="text-gray-300">
                           {invoice.buyerLegalName ||
                             invoice.buyerTradeName ||
                             "—"}
                         </TableCell>
-                        <TableCell className="text-gray-400">
-                          {invoice.buyerTin || "—"}
-                        </TableCell>
                         <TableCell className="text-white font-medium">
                           {formatCurrency(invoice.total)}
                         </TableCell>
-                        <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                         <TableCell className="text-gray-400">
-                          {invoice.createdAt
-                            ? formatDistanceToNow(new Date(invoice.createdAt), {
-                                addSuffix: true,
-                              })
-                            : "Unknown"}
+                          {invoice.dueDate ? (
+                            <div className="flex flex-col">
+                              <span>
+                                {format(new Date(invoice.dueDate), "MMM dd, yyyy")}
+                              </span>
+                              {isOverdue(invoice.dueDate, invoice.status) && (
+                                <span className="text-xs text-red-400">Overdue</span>
+                              )}
+                            </div>
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
+                        <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button

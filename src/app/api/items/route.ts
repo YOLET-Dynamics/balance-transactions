@@ -2,6 +2,7 @@ import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
 import { requireRole } from "@/lib/middleware/auth.middleware";
 import { itemsService } from "@/application/services/items.service";
 import { createItemSchema } from "@/lib/validation/schemas";
+import { authRepository } from "@/infrastructure/repositories/auth.repository.impl";
 
 export const GET = createRoute(
   async ({ request, auth }) => {
@@ -36,7 +37,9 @@ export const POST = createRoute(
 
     const body = getValidatedBody<typeof createItemSchema._type>(request);
 
-    const item = await itemsService.createItem(auth!.orgId, body);
+    const org = await authRepository.findOrgById(auth!.orgId);
+
+    const item = await itemsService.createItem(auth!.orgId, org!.code, body);
 
     return item;
   },

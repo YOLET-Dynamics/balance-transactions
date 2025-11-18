@@ -18,6 +18,7 @@ import { NotFoundError } from "../../lib/utils/errors";
 type GoodsOrService = "Goods" | "Service";
 type PartyType = "Company" | "Individual";
 type InvoiceStatus = "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
+type InvoiceType = "Cash" | "Credit";
 
 interface CreateInvoiceInput {
   buyerType?: PartyType;
@@ -33,6 +34,11 @@ interface CreateInvoiceInput {
   goodsOrService: GoodsOrService;
   paymentMethod: string;
   paymentRef?: string;
+
+  invoiceType: InvoiceType;
+  invoiceDate: Date;
+  dueDate: Date;
+  paidDate?: Date;
 
   status?: InvoiceStatus;
 
@@ -92,6 +98,21 @@ export class SalesService {
 
     const totalInWords = moneyToWords(total);
 
+    // Hybrid status logic
+    let status: InvoiceStatus = input.status || "Pending";
+    
+    if (input.invoiceType === "Cash") {
+      // Cash invoices: Auto-set to Paid if paidDate provided, otherwise Pending
+      status = input.paidDate ? "Paid" : "Pending";
+    } else {
+      // Credit invoices: Manual status, but auto-set to Overdue if past due date
+      if (!input.status) {
+        const now = new Date();
+        const dueDate = new Date(input.dueDate);
+        status = now > dueDate ? "Overdue" : "Pending";
+      }
+    }
+
     const invoiceData: CreateSalesInvoiceData = {
       number: docNumber.full,
       year: docNumber.year,
@@ -120,7 +141,12 @@ export class SalesService {
       paymentMethod: input.paymentMethod as any,
       paymentRef: input.paymentRef,
 
-      status: input.status,
+      invoiceType: input.invoiceType,
+      invoiceDate: input.invoiceDate,
+      dueDate: input.dueDate,
+      paidDate: input.paidDate,
+
+      status,
 
       createdBy: input.createdBy,
       reviewedBy: input.reviewedBy,

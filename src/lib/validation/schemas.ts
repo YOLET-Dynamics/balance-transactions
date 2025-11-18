@@ -46,6 +46,7 @@ export const InvoiceStatusEnum = z.enum([
   "Overdue",
   "Cancelled",
 ]);
+export const InvoiceTypeEnum = z.enum(["Cash", "Credit"]);
 export const PaymentMethodEnum = z.enum([
   "Cash",
   "Cheque",
@@ -63,7 +64,7 @@ export const AttachmentKindEnum = z.enum([
   "Logo",
   "Other",
 ]);
-export const DocTypeEnum = z.enum(["CS", "PV", "PB"]);
+export const DocTypeEnum = z.enum(["CS", "PV", "PB", "PROD"]);
 
 /**
  * Strong password schema with OWASP recommendations:
@@ -198,7 +199,7 @@ export const salesInvoiceLineSchema = z.object({
   isVatApplicable: z.boolean().default(true),
 });
 
-export const createSalesInvoiceSchema = z.object({
+const baseSalesInvoiceSchema = z.object({
   buyerType: PartyTypeEnum.optional(),
   buyerLegalName: z.string().max(255).optional(),
   buyerTradeName: z.string().max(255).optional(),
@@ -213,6 +214,11 @@ export const createSalesInvoiceSchema = z.object({
   paymentMethod: PaymentMethodEnum,
   paymentRef: z.string().max(255).optional(),
 
+  invoiceType: InvoiceTypeEnum,
+  invoiceDate: z.coerce.date(),
+  dueDate: z.coerce.date(),
+  paidDate: z.coerce.date().optional(),
+
   status: InvoiceStatusEnum.optional(),
 
   lines: z.array(salesInvoiceLineSchema).min(1),
@@ -225,7 +231,17 @@ export const createSalesInvoiceSchema = z.object({
   notes: z.string().optional(),
 });
 
-export const updateSalesInvoiceSchema = createSalesInvoiceSchema.partial();
+export const createSalesInvoiceSchema = baseSalesInvoiceSchema
+  .refine((data) => data.dueDate >= data.invoiceDate, {
+    message: "Due date must be on or after invoice date",
+    path: ["dueDate"],
+  })
+  .refine((data) => !data.paidDate || data.paidDate >= data.invoiceDate, {
+    message: "Paid date must be on or after invoice date",
+    path: ["paidDate"],
+  });
+
+export const updateSalesInvoiceSchema = baseSalesInvoiceSchema.partial();
 
 export const purchaseBillLineSchema = z.object({
   itemId: uuidSchema.optional(),
@@ -278,7 +294,6 @@ export const updatePaymentSchema = createPaymentSchema.partial();
 
 export const createItemSchema = z.object({
   type: ItemTypeEnum,
-  code: z.string().min(1).max(50),
   name: z.string().min(1).max(255),
   description: z.string().max(1000).optional(),
   unit: z.string().min(1).max(20),

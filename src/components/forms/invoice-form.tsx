@@ -4,7 +4,15 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Calculator, Users, Package } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Calculator,
+  Users,
+  Package,
+  Calendar as CalendarIcon,
+} from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,12 +27,19 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   createSalesInvoiceSchema,
   PartyTypeEnum,
   GoodsOrServiceEnum,
   PaymentMethodEnum,
   InvoiceStatusEnum,
+  InvoiceTypeEnum,
 } from "@/lib/validation/schemas";
 import { useCustomers, useCreateCustomer } from "@/lib/hooks/use-customers";
 import { useSession } from "@/lib/hooks/use-session";
@@ -60,6 +75,10 @@ export function InvoiceForm({
   const { data: itemsData } = useItems({ isActive: true, limit: 100 });
   const items = (itemsData as any)?.items || [];
 
+  const today = new Date();
+  const thirtyDaysFromNow = new Date(today);
+  thirtyDaysFromNow.setDate(today.getDate() + 30);
+
   const {
     register,
     control,
@@ -83,6 +102,9 @@ export function InvoiceForm({
       goodsOrService: "Goods",
       paymentMethod: "Cash",
       buyerCountry: "ET",
+      invoiceType: "Cash",
+      invoiceDate: today,
+      dueDate: today,
       status: "Pending",
     },
   });
@@ -147,6 +169,21 @@ export function InvoiceForm({
   const lines = watch("lines");
   const buyerType = watch("buyerType");
   const goodsOrService = watch("goodsOrService");
+  const invoiceType = watch("invoiceType");
+  const invoiceDate = watch("invoiceDate");
+  const dueDate = watch("dueDate");
+  const paidDate = watch("paidDate");
+
+  // Adjust due date when invoice type changes
+  useEffect(() => {
+    if (invoiceType === "Cash" && invoiceDate) {
+      setValue("dueDate", invoiceDate);
+    } else if (invoiceType === "Credit" && invoiceDate) {
+      const creditDueDate = new Date(invoiceDate);
+      creditDueDate.setDate(creditDueDate.getDate() + 30);
+      setValue("dueDate", creditDueDate);
+    }
+  }, [invoiceType, invoiceDate, setValue]);
 
   // Handle quick-add product selection
   const handleQuickAddProduct = (item: any) => {
@@ -262,6 +299,162 @@ export function InvoiceForm({
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      {/* Invoice Type and Dates */}
+      <Card className="bg-white/5 border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5" />
+            Invoice Type & Dates
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="invoiceType" className="text-gray-300">
+                Invoice Type *
+              </Label>
+              <Select
+                value={watch("invoiceType")}
+                onValueChange={(value) =>
+                  setValue("invoiceType", value as "Cash" | "Credit")
+                }
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {InvoiceTypeEnum.options.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type === "Cash" ? "💵 Cash Sale" : "📅 Credit Sale"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.invoiceType && (
+                <p className="text-sm text-red-400">
+                  {errors.invoiceType.message}
+                </p>
+              )}
+              <p className="text-xs text-gray-400">
+                {invoiceType === "Cash"
+                  ? "Payment received immediately, attached to fiscal receipt"
+                  : "Payment due on a future date, allows credit terms"}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="text-gray-300">Invoice Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-left bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {invoiceDate ? format(invoiceDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={invoiceDate}
+                    onSelect={(date) => date && setValue("invoiceDate", date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.invoiceDate && (
+                <p className="text-sm text-red-400">
+                  {errors.invoiceDate.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-300">Due Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-left bg-white/5 border-white/10 text-white hover:bg-white/10"
+                    disabled={invoiceType === "Cash"}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dueDate ? format(dueDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dueDate}
+                    onSelect={(date) => date && setValue("dueDate", date)}
+                    disabled={(date) =>
+                      invoiceDate ? date < invoiceDate : false
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.dueDate && (
+                <p className="text-sm text-red-400">{errors.dueDate.message}</p>
+              )}
+              {invoiceType === "Cash" && (
+                <p className="text-xs text-gray-400">
+                  Same as invoice date for cash sales
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-300">Paid Date (Optional)</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-left bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {paidDate ? format(paidDate, "PPP") : "Not paid yet"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={paidDate}
+                    onSelect={(date) => setValue("paidDate", date || undefined)}
+                    disabled={(date) =>
+                      invoiceDate ? date < invoiceDate : false
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {paidDate && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setValue("paidDate", undefined)}
+                  className="text-xs text-gray-400 hover:text-white"
+                >
+                  Clear date
+                </Button>
+              )}
+              {errors.paidDate && (
+                <p className="text-sm text-red-400">
+                  {errors.paidDate.message}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="bg-white/5 border-white/10">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">

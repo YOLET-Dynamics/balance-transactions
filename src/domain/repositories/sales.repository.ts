@@ -2,6 +2,7 @@ type PartyType = "Company" | "Individual";
 type GoodsOrService = "Goods" | "Service";
 type PaymentMethod = "Cash" | "Cheque" | "BankTransfer" | "POS" | "Mobile";
 type InvoiceStatus = "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
+type InvoiceType = "Cash" | "Credit";
 
 export interface SalesInvoiceLine {
   itemId?: string;
@@ -39,6 +40,11 @@ export interface CreateSalesInvoiceData {
 
   paymentMethod: PaymentMethod;
   paymentRef?: string;
+
+  invoiceType: InvoiceType;
+  invoiceDate: Date;
+  dueDate: Date;
+  paidDate?: Date;
 
   status?: InvoiceStatus;
 
@@ -82,6 +88,11 @@ export interface SalesInvoice {
 
   paymentMethod: PaymentMethod;
   paymentRef?: string | null;
+
+  invoiceType: InvoiceType;
+  invoiceDate: string;
+  dueDate: string;
+  paidDate?: string | null;
 
   status: InvoiceStatus;
 

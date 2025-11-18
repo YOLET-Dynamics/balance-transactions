@@ -43,7 +43,7 @@ import {
 } from "@/lib/hooks/use-sales";
 import { useSession } from "@/lib/hooks/use-session";
 import { useCreatePayment } from "@/lib/hooks/use-payments";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { RecordPaymentDialog } from "@/components/dialogs/record-payment-dialog";
 
 export default function InvoiceDetailPage({
@@ -84,6 +84,23 @@ export default function InvoiceDetailPage({
         {status}
       </Badge>
     );
+  };
+
+  const getTypeBadge = (type: string) => {
+    return type === "Cash" ? (
+      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+        💵 Cash Sale
+      </Badge>
+    ) : (
+      <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+        📅 Credit Sale
+      </Badge>
+    );
+  };
+
+  const isOverdue = (dueDate: string, status: string) => {
+    if (status === "Paid") return false;
+    return new Date(dueDate) < new Date();
   };
 
   const canEdit = () => {
@@ -555,11 +572,40 @@ export default function InvoiceDetailPage({
 
           <Card className="bg-white/5 border-white/10">
             <CardHeader>
-              <CardTitle className="text-white">Details</CardTitle>
+              <CardTitle className="text-white">Invoice Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
-                <p className="text-gray-400">Type</p>
+                <p className="text-gray-400">Invoice Type</p>
+                {getTypeBadge(invoice.invoiceType)}
+              </div>
+              <div>
+                <p className="text-gray-400">Invoice Date</p>
+                <p className="text-white">
+                  {format(new Date(invoice.invoiceDate), "PPP")}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Due Date</p>
+                <p
+                  className={`text-white ${isOverdue(invoice.dueDate, invoice.status) ? "text-red-400 font-semibold" : ""}`}
+                >
+                  {format(new Date(invoice.dueDate), "PPP")}
+                  {isOverdue(invoice.dueDate, invoice.status) && (
+                    <span className="ml-2 text-xs">(Overdue)</span>
+                  )}
+                </p>
+              </div>
+              {invoice.paidDate && (
+                <div>
+                  <p className="text-gray-400">Paid Date</p>
+                  <p className="text-green-400 font-medium">
+                    {format(new Date(invoice.paidDate), "PPP")}
+                  </p>
+                </div>
+              )}
+              <div className="pt-2 border-t border-white/10">
+                <p className="text-gray-400">Goods/Service</p>
                 <p className="text-white">{invoice.goodsOrService}</p>
               </div>
               <div>
@@ -572,7 +618,7 @@ export default function InvoiceDetailPage({
                   <p className="text-white font-mono">{invoice.paymentRef}</p>
                 </div>
               )}
-              <div>
+              <div className="pt-2 border-t border-white/10">
                 <p className="text-gray-400">Created By</p>
                 <p className="text-white">{invoice.createdBy || "—"}</p>
               </div>
