@@ -157,7 +157,7 @@ export class SalesService {
 
       notes: input.notes,
 
-      lines: input.lines,
+      lines: lines,
     };
 
     return await this.salesRepo.create(orgId, invoiceData);
