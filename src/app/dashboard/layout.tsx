@@ -93,14 +93,14 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white flex">
+    <div className="h-screen bg-black text-white flex overflow-hidden">
       {/* Sidebar */}
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-20"
-        } border-r border-white/10 bg-black transition-all duration-300 flex flex-col`}
+        } border-r border-white/10 bg-black transition-all duration-300 flex flex-col flex-shrink-0`}
       >
-        <div className="p-6 border-b border-white/10">
+        <div className="p-6 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-brand-yellow-500 flex items-center justify-center flex-shrink-0">
               <Building2 className="h-6 w-6 text-black" />
@@ -129,7 +129,7 @@ export default function DashboardLayout({
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -151,7 +151,7 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10 space-y-2">
+        <div className="p-4 border-t border-white/10 space-y-2 flex-shrink-0">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -189,9 +189,9 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Bar */}
-        <header className="h-[73px] border-b border-white/10 bg-black sticky top-0 z-10 flex items-center">
+        <header className="h-[73px] border-b border-white/10 bg-black flex-shrink-0 z-10 flex items-center">
           <div className="px-4 flex items-center justify-between w-full">
             <div className="flex items-center gap-4 flex-1">
               <Button

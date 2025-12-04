@@ -64,7 +64,8 @@ export const AttachmentKindEnum = z.enum([
   "Logo",
   "Other",
 ]);
-export const DocTypeEnum = z.enum(["CS", "PV", "PB", "PROD"]);
+export const DocTypeEnum = z.enum(["CS", "PV", "PB", "PROD", "PI"]);
+export const InvoiceKindEnum = z.enum(["Invoice", "Proforma"]);
 
 /**
  * Strong password schema with OWASP recommendations:
@@ -220,6 +221,8 @@ const baseSalesInvoiceSchema = z.object({
   paidDate: z.coerce.date().optional(),
 
   status: InvoiceStatusEnum.optional(),
+  
+  applyWithholding: z.boolean().optional().default(false),
 
   lines: z.array(salesInvoiceLineSchema).min(1),
 
@@ -242,6 +245,20 @@ export const createSalesInvoiceSchema = baseSalesInvoiceSchema
   });
 
 export const updateSalesInvoiceSchema = baseSalesInvoiceSchema.partial();
+
+const baseProformaInvoiceSchema = baseSalesInvoiceSchema.extend({
+  status: z.enum(["Draft", "Pending"]).optional(),
+});
+
+export const createProformaInvoiceSchema = baseProformaInvoiceSchema.refine(
+  (data) => data.dueDate >= data.invoiceDate,
+  {
+    message: "Valid until date must be on or after invoice date",
+    path: ["dueDate"],
+  }
+);
+
+export const updateProformaInvoiceSchema = baseProformaInvoiceSchema.partial();
 
 export const purchaseBillLineSchema = z.object({
   itemId: uuidSchema.optional(),

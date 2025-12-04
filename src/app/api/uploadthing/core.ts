@@ -41,6 +41,24 @@ export const ourFileRouter = {
       };
     }),
 
+  logoUploader: f({
+    image: { maxFileSize: "2MB", maxFileCount: 1 },
+  })
+    .middleware(async () => {
+      const authResult = await authenticateUpload();
+      return authResult;
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      return {
+        uploadedBy: metadata.userId,
+        orgId: metadata.orgId,
+        url: file.url,
+        fileKey: file.key,
+        fileName: file.name,
+        fileSize: file.size,
+      };
+    }),
+
   attachmentUploader: f({
     image: { maxFileSize: "4MB", maxFileCount: 5 },
     pdf: { maxFileSize: "4MB", maxFileCount: 5 },

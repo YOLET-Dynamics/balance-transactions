@@ -4,10 +4,21 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, User, Building2 } from "lucide-react";
+import {
+  Loader2,
+  User,
+  Building2,
+  Upload,
+  X,
+  Image as ImageIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useUploadThing } from "@/lib/uploadthing";
+import { api } from "@/lib/api/client";
+import { toast } from "sonner";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -48,6 +59,12 @@ export default function SettingsPage() {
   const updateProfile = useUpdateProfile();
   const updateOrganization = useUpdateOrganization();
   const [activeTab, setActiveTab] = useState("profile");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [removingLogo, setRemovingLogo] = useState(false);
+
+  const { startUpload } = useUploadThing("logoUploader");
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -85,6 +102,70 @@ export default function SettingsPage() {
 
   const handleOrganizationSubmit = (data: OrganizationFormData) => {
     updateOrganization.mutate(data);
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("File too large", {
+          description: "Logo must be under 2MB",
+        });
+        return;
+      }
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLogoUpload = async () => {
+    if (!logoFile) return;
+
+    setUploadingLogo(true);
+    try {
+      const result = await startUpload([logoFile]);
+      if (result && result[0]) {
+        const uploadData = result[0];
+        await api.post("/api/organization/logo", {
+          url: uploadData.url,
+          fileKey: uploadData.key,
+          fileName: uploadData.name,
+          fileSize: uploadData.size,
+        });
+
+        toast.success("Logo uploaded successfully");
+        setLogoFile(null);
+        setLogoPreview(null);
+        window.location.reload();
+      }
+    } catch (error) {
+      toast.error("Failed to upload logo", {
+        description:
+          error instanceof Error ? error.message : "Please try again",
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    setRemovingLogo(true);
+    try {
+      await api.delete("/api/organization/logo");
+      toast.success("Logo removed successfully");
+      window.location.reload();
+    } catch (error) {
+      toast.error("Failed to remove logo", {
+        description:
+          error instanceof Error ? error.message : "Please try again",
+      });
+    } finally {
+      setRemovingLogo(false);
+    }
   };
 
   if (sessionLoading) {
@@ -238,6 +319,145 @@ export default function SettingsPage() {
         {/* Organization Tab */}
         {canEditOrganization() && (
           <TabsContent value="organization" className="space-y-6">
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white">Organization Logo</CardTitle>
+                <CardDescription className="text-gray-400">
+                  Upload your organization logo (appears on invoices and bills)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {(session?.organization as any)?.logoAttachment ? (
+                    <div className="flex items-center gap-4">
+                      <div className="w-32 h-16 border border-white/10 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                        <Image
+                          src={
+                            (session?.organization as any)?.logoAttachment
+                              ?.url || ""
+                          }
+                          alt="Organization Logo"
+                          width={120}
+                          height={60}
+                          className="object-contain"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-300">Current Logo</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Size:{" "}
+                          {Math.round(
+                            ((session?.organization as any)?.logoAttachment
+                              ?.size || 0) / 1024
+                          )}
+                          KB
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleRemoveLogo}
+                        disabled={removingLogo}
+                        variant="outline"
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      >
+                        {removingLogo ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <X className="h-4 w-4 mr-2" />
+                            Remove
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center">
+                      <ImageIcon className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+                      <p className="text-gray-400 mb-2">No logo uploaded</p>
+                      <p className="text-xs text-gray-500">
+                        PNG or JPG • Max 2MB • Recommended: 400×200px
+                      </p>
+                    </div>
+                  )}
+
+                  {logoPreview && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                        <div className="w-32 h-16 border border-white/10 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                          <Image
+                            src={logoPreview}
+                            alt="Logo Preview"
+                            width={120}
+                            height={60}
+                            className="object-contain"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-300">Preview</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {logoFile?.name} (
+                            {Math.round((logoFile?.size || 0) / 1024)}KB)
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => {
+                            setLogoFile(null);
+                            setLogoPreview(null);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-400 hover:text-white"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Button
+                        onClick={handleLogoUpload}
+                        disabled={uploadingLogo}
+                        className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 w-full"
+                      >
+                        {uploadingLogo ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload Logo
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {!logoPreview && (
+                    <div>
+                      <input
+                        type="file"
+                        id="logo-upload"
+                        accept="image/png,image/jpeg,image/jpg"
+                        onChange={handleLogoChange}
+                        className="hidden"
+                      />
+                      <label htmlFor="logo-upload">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="border-white/20 text-white hover:bg-white/5 w-full cursor-pointer"
+                          onClick={() =>
+                            document.getElementById("logo-upload")?.click()
+                          }
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Choose Logo File
+                        </Button>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="bg-white/5 border-white/10">
               <CardHeader>
                 <CardTitle className="text-white">

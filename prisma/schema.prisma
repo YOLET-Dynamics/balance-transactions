@@ -294,11 +294,12 @@ enum GoodsOrService {
 }
 
 model SalesInvoice {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orgId    String @map("org_id") @db.Uuid
+  id       String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId    String      @map("org_id") @db.Uuid
   number   String
   year     Int
-  seqValue Int    @map("seq_value")
+  seqValue Int         @map("seq_value")
+  kind     InvoiceKind @default(Invoice)
 
   // Buyer snapshot (JSON)
   buyerType       PartyType? @map("buyer_type")
@@ -351,6 +352,8 @@ model SalesInvoice {
   @@unique([orgId, number])
   @@index([orgId])
   @@index([year])
+  @@index([kind])
+  @@index([orgId, kind])
   @@map("sales_invoices")
 }
 
@@ -543,10 +546,16 @@ model Attachment {
 }
 
 enum DocType {
-  CS   // Cash Sales
-  PV   // Payment Voucher
-  PB   // Purchase Bill
-  PROD // Product
+  CS
+  PV
+  PB
+  PROD
+  PI
+}
+
+enum InvoiceKind {
+  Invoice
+  Proforma
 }
 
 model NumberSequence {

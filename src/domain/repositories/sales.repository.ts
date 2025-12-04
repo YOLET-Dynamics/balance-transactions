@@ -3,6 +3,7 @@ type GoodsOrService = "Goods" | "Service";
 type PaymentMethod = "Cash" | "Cheque" | "BankTransfer" | "POS" | "Mobile";
 type InvoiceStatus = "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
 type InvoiceType = "Cash" | "Credit";
+type InvoiceKind = "Invoice" | "Proforma";
 
 export interface SalesInvoiceLine {
   itemId?: string;
@@ -17,6 +18,7 @@ export interface CreateSalesInvoiceData {
   number: string;
   year: number;
   seqValue: number;
+  kind?: InvoiceKind;
 
   buyerType?: PartyType;
   buyerLegalName?: string;
@@ -64,6 +66,7 @@ export interface SalesInvoice {
   number: string;
   year: number;
   seqValue: number;
+  kind: InvoiceKind;
 
   buyerType?: PartyType | null;
   buyerLegalName?: string | null;
@@ -144,6 +147,7 @@ export interface ListOptions {
   limit: number;
   search?: string;
   status?: string;
+  kind?: string;
   year?: number;
   fromDate?: Date;
   toDate?: Date;

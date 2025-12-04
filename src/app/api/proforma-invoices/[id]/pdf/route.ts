@@ -1,8 +1,8 @@
 import React from "react";
 import { NextResponse } from "next/server";
-import { salesService } from "@/application/services/sales.service";
+import { proformaService } from "@/application/services/proforma.service";
 import { renderToStream } from "@react-pdf/renderer";
-import { SalesInvoicePDF } from "@/infrastructure/pdf/sales-invoice.template";
+import { ProformaInvoicePDF } from "@/infrastructure/pdf/proforma-invoice.template";
 import { authRepository } from "@/infrastructure/repositories/auth.repository.impl";
 import type { NextRequest } from "next/server";
 
@@ -16,7 +16,7 @@ export async function GET(
 
     if (!id) {
       return NextResponse.json(
-        { error: "Invoice ID is required" },
+        { error: "Proforma invoice ID is required" },
         { status: 400 }
       );
     }
@@ -30,7 +30,6 @@ export async function GET(
       );
     }
 
-    // Hash the token to find session
     const crypto = await import("crypto");
     const tokenHash = crypto
       .createHash("sha256")
@@ -43,7 +42,6 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Get organization from session
     const orgData = await authRepository.findOrgById(session.orgId);
 
     if (!orgData) {
@@ -58,7 +56,6 @@ export async function GET(
       logoUrl: (orgData as any).logoAttachment?.url || null,
     };
 
-    // Verify membership
     const membership = await authRepository.findMembershipByUserAndOrg(
       session.userId,
       session.orgId
@@ -68,25 +65,20 @@ export async function GET(
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    // Get the invoice
-    const invoice = await salesService.getInvoiceById(session.orgId, id);
+    const proforma = await proformaService.getProformaById(session.orgId, id);
 
-    // Generate PDF document element
-    const pdfDocument = React.createElement(SalesInvoicePDF, {
-      invoice,
+    const pdfDocument = React.createElement(ProformaInvoicePDF, {
+      proforma,
       organization,
     });
 
-    // Render to stream
     const stream = await renderToStream(pdfDocument as any);
 
-    // Convert stream to buffer
     const chunks: Uint8Array[] = [];
     for await (const chunk of stream) {
       chunks.push(chunk as Uint8Array);
     }
 
-    // Combine all chunks into a single buffer
     const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
     const buffer = new Uint8Array(totalLength);
     let offset = 0;
@@ -95,11 +87,10 @@ export async function GET(
       offset += chunk.length;
     }
 
-    // Return PDF as response
     return new Response(buffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="invoice-${invoice.number}.pdf"`,
+        "Content-Disposition": `inline; filename="proforma-${proforma.number}.pdf"`,
         "Cache-Control": "no-cache",
       },
     });
@@ -110,3 +101,4 @@ export async function GET(
     );
   }
 }
+

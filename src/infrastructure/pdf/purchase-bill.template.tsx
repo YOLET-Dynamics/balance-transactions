@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import type { PurchaseBill } from "@/domain/repositories/purchases.repository";
 
 const styles = StyleSheet.create({
@@ -11,13 +11,17 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  headerLeft: {
+    flex: 1,
   },
   logo: {
-    fontSize: 20,
-    fontFamily: "Courier-Bold",
-    color: "#000000",
-    marginBottom: 4,
-    letterSpacing: 0.5,
+    width: 120,
+    height: 60,
+    objectFit: "contain",
   },
   billTitle: {
     fontSize: 10,
@@ -178,6 +182,7 @@ interface PurchaseBillPDFProps {
     vatNumber?: string | null;
     phone?: string | null;
     email?: string | null;
+    logoUrl?: string | null;
   };
 }
 
@@ -208,12 +213,13 @@ export const PurchaseBillPDF: React.FC<PurchaseBillPDFProps> = ({
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>
-            {organization.tradeName || organization.legalName}
-          </Text>
-          <Text style={styles.billTitle}>Purchase Bill</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.billTitle}>Purchase Bill</Text>
+          </View>
+          {organization.logoUrl && (
+            <Image src={organization.logoUrl} style={styles.logo} />
+          )}
         </View>
 
         {/* Metadata */}

@@ -46,6 +46,7 @@ export class SalesRepository implements ISalesRepository {
           number: data.number,
           year: data.year,
           seqValue: data.seqValue,
+          kind: data.kind || "Invoice",
 
           buyerType: data.buyerType,
           buyerLegalName: data.buyerLegalName,
@@ -85,14 +86,14 @@ export class SalesRepository implements ISalesRepository {
           notes: data.notes,
 
           lines: {
-            create: data.lines.map((line, index) => ({
+            create: data.lines.map((line: any, index) => ({
               seq: index + 1,
               itemId: line.itemId,
               description: line.description,
               unit: line.unit,
               quantity: line.quantity,
               unitPrice: line.unitPrice,
-              lineTotal: line.quantity * line.unitPrice,
+              lineTotal: line.lineTotal,
               isVatApplicable: line.isVatApplicable,
             })),
           },
@@ -151,6 +152,10 @@ export class SalesRepository implements ISalesRepository {
 
       if (options.status) {
         where.status = options.status as any;
+      }
+
+      if (options.kind) {
+        where.kind = options.kind as any;
       }
 
       if (options.year) {
@@ -235,6 +240,7 @@ export class SalesRepository implements ISalesRepository {
       const currentMonthInvoices = await tx.salesInvoice.findMany({
         where: {
           orgId,
+          kind: "Invoice",
           createdAt: {
             gte: startOfMonth,
             lte: endOfMonth,
@@ -249,6 +255,7 @@ export class SalesRepository implements ISalesRepository {
       const prevMonthInvoices = await tx.salesInvoice.findMany({
         where: {
           orgId,
+          kind: "Invoice",
           status: "Paid",
           createdAt: {
             gte: startOfPrevMonth,
@@ -346,7 +353,7 @@ export class SalesRepository implements ISalesRepository {
   ): Promise<SalesInvoice[]> {
     return await withTenantContext(orgId, async (tx) => {
       const invoices = await tx.salesInvoice.findMany({
-        where: { orgId },
+        where: { orgId, kind: "Invoice" },
         orderBy: { createdAt: "desc" },
         take: limit,
         include: {

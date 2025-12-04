@@ -1,9 +1,8 @@
 import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
 import {
-  createSalesInvoiceSchema,
-  paginationSchema,
+  createProformaInvoiceSchema,
 } from "@/lib/validation/schemas";
-import { salesService } from "@/application/services/sales.service";
+import { proformaService } from "@/application/services/proforma.service";
 import { requireRole } from "@/lib/middleware/auth.middleware";
 import { authRepository } from "@/infrastructure/repositories/auth.repository.impl";
 
@@ -12,22 +11,22 @@ export const POST = createRoute(
     requireRole(auth!, "Manager");
 
     const body =
-      getValidatedBody<typeof createSalesInvoiceSchema._type>(request);
+      getValidatedBody<typeof createProformaInvoiceSchema._type>(request);
 
     const org = await authRepository.findOrgById(auth!.orgId);
 
-    const invoice = await salesService.createInvoice(
+    const proforma = await proformaService.createProforma(
       auth!.orgId,
       org!.code,
       body
     );
 
-    return invoice;
+    return proforma;
   },
   {
     requireAuth: true,
     rateLimit: "mutations",
-    bodySchema: createSalesInvoiceSchema,
+    bodySchema: createProformaInvoiceSchema,
   }
 );
 
@@ -42,12 +41,11 @@ export const GET = createRoute(
       ? parseInt(url.searchParams.get("year")!)
       : undefined;
 
-    const result = await salesService.listInvoices(auth!.orgId, {
+    const result = await proformaService.listProformas(auth!.orgId, {
       page,
       limit,
       search,
       status: status !== "all" ? status : undefined,
-      kind: "Invoice",
       year,
     });
 
@@ -58,3 +56,4 @@ export const GET = createRoute(
     rateLimit: "queries",
   }
 );
+

@@ -17,10 +17,10 @@ import { NotFoundError } from "../../lib/utils/errors";
 
 type GoodsOrService = "Goods" | "Service";
 type PartyType = "Company" | "Individual";
-type InvoiceStatus = "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
+type ProformaStatus = "Draft" | "Pending" | "Cancelled";
 type InvoiceType = "Cash" | "Credit";
 
-interface CreateInvoiceInput {
+interface CreateProformaInput {
   buyerType?: PartyType;
   buyerLegalName?: string;
   buyerTradeName?: string;
@@ -38,9 +38,8 @@ interface CreateInvoiceInput {
   invoiceType: InvoiceType;
   invoiceDate: Date;
   dueDate: Date;
-  paidDate?: Date;
 
-  status?: InvoiceStatus;
+  status?: ProformaStatus;
   
   applyWithholding?: boolean;
 
@@ -61,15 +60,15 @@ interface CreateInvoiceInput {
   notes?: string;
 }
 
-export class SalesService {
+export class ProformaService {
   constructor(private salesRepo: ISalesRepository) {}
 
-  async createInvoice(
+  async createProforma(
     orgId: string,
     orgCode: string,
-    input: CreateInvoiceInput
+    input: CreateProformaInput
   ): Promise<SalesInvoice> {
-    const docNumber = await sequenceService.allocateNext(orgId, orgCode, "CS");
+    const docNumber = await sequenceService.allocateNext(orgId, orgCode, "PI");
 
     const lines = input.lines.map((line) => ({
       ...line,
@@ -99,26 +98,13 @@ export class SalesService {
 
     const totalInWords = moneyToWords(total);
 
-    // Hybrid status logic
-    let status: InvoiceStatus = input.status || "Pending";
-    
-    if (input.invoiceType === "Cash") {
-      // Cash invoices: Auto-set to Paid if paidDate provided, otherwise Pending
-      status = input.paidDate ? "Paid" : "Pending";
-    } else {
-      // Credit invoices: Manual status, but auto-set to Overdue if past due date
-      if (!input.status) {
-        const now = new Date();
-        const dueDate = new Date(input.dueDate);
-        status = now > dueDate ? "Overdue" : "Pending";
-      }
-    }
+    const status: ProformaStatus = input.status || "Draft";
 
-    const invoiceData: CreateSalesInvoiceData = {
+    const proformaData: CreateSalesInvoiceData = {
       number: docNumber.full,
       year: docNumber.year,
       seqValue: docNumber.seqValue,
-      kind: "Invoice",
+      kind: "Proforma",
 
       buyerType: input.buyerType,
       buyerLegalName: input.buyerLegalName,
@@ -146,9 +132,8 @@ export class SalesService {
       invoiceType: input.invoiceType,
       invoiceDate: input.invoiceDate,
       dueDate: input.dueDate,
-      paidDate: input.paidDate,
 
-      status,
+      status: status as any,
 
       createdBy: input.createdBy,
       reviewedBy: input.reviewedBy,
@@ -160,51 +145,41 @@ export class SalesService {
       lines: input.lines,
     };
 
-    return await this.salesRepo.create(orgId, invoiceData);
+    return await this.salesRepo.create(orgId, proformaData);
   }
 
-  async getInvoiceById(orgId: string, id: string): Promise<SalesInvoice> {
-    const invoice = await this.salesRepo.findById(orgId, id);
-    if (!invoice) {
-      throw new NotFoundError("Invoice not found");
+  async getProformaById(orgId: string, id: string): Promise<SalesInvoice> {
+    const proforma = await this.salesRepo.findById(orgId, id);
+    if (!proforma || proforma.kind !== "Proforma") {
+      throw new NotFoundError("Proforma invoice not found");
     }
-    return invoice;
+    return proforma;
   }
 
-  async listInvoices(orgId: string, options: ListOptions) {
-    return await this.salesRepo.list(orgId, options);
+  async listProformas(orgId: string, options: ListOptions) {
+    return await this.salesRepo.list(orgId, { ...options, kind: "Proforma" });
   }
 
-  async updateInvoice(
+  async updateProforma(
     orgId: string,
     id: string,
-    data: Partial<CreateInvoiceInput>
+    data: Partial<CreateProformaInput>
   ): Promise<SalesInvoice> {
-    await this.getInvoiceById(orgId, id);
+    const proforma = await this.getProformaById(orgId, id);
+
+    if (data.status && !["Draft", "Pending", "Cancelled"].includes(data.status)) {
+      throw new Error("Invalid status for proforma invoice");
+    }
 
     return await this.salesRepo.update(orgId, id, data as any);
   }
 
-  async deleteInvoice(orgId: string, id: string): Promise<void> {
+  async deleteProforma(orgId: string, id: string): Promise<void> {
+    await this.getProformaById(orgId, id);
     await this.salesRepo.delete(orgId, id);
-  }
-
-  async attachPdf(
-    orgId: string,
-    id: string,
-    attachmentId: string
-  ): Promise<void> {
-    await this.salesRepo.attachPdf(orgId, id, attachmentId);
-  }
-
-  async getStats(orgId: string, year: number, month: number) {
-    return await this.salesRepo.getStats(orgId, year, month);
-  }
-
-  async getRecentInvoices(orgId: string, limit: number = 5) {
-    return await this.salesRepo.getRecentInvoices(orgId, limit);
   }
 }
 
 import { salesRepository } from "../../infrastructure/repositories/sales.repository.impl";
-export const salesService = new SalesService(salesRepository);
+export const proformaService = new ProformaService(salesRepository);
+

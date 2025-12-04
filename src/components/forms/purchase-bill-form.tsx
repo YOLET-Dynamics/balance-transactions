@@ -279,7 +279,7 @@ export function PurchaseBillForm({
       const quantity = Number(line.quantity) || 0;
       const unitPrice = Number(line.unitPrice) || 0;
       const discountAmount = Number(line.discountAmount) || 0;
-      const baseAmount = quantity * unitPrice;
+      const baseAmount = Math.round(quantity * unitPrice * 100) / 100;
       return baseAmount - discountAmount;
     });
   };

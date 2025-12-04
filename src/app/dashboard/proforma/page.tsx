@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useInvoices, type Invoice } from "@/lib/hooks/use-sales";
+import { useProformaInvoices, type ProformaInvoice } from "@/lib/hooks/use-proforma";
 import { Button } from "@/components/ui/button";
 import { axiosInstance } from "@/lib/api/client";
 import {
@@ -38,11 +38,10 @@ import {
   Edit,
   Trash2,
   Loader2,
-  ArrowUpDown,
 } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 
-export default function SalesPage() {
+export default function ProformaPage() {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -50,17 +49,16 @@ export default function SalesPage() {
   const [page, setPage] = useState(1);
   const limit = 20;
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput);
-      setPage(1); // Reset to first page when search changes
+      setPage(1);
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const { data, error, isLoading, refetch } = useInvoices({
+  const { data, error, isLoading, refetch } = useProformaInvoices({
     page,
     limit,
     search: debouncedSearch,
@@ -74,12 +72,10 @@ export default function SalesPage() {
     }).format(amount)}`;
   };
 
-  const getStatusBadge = (status: Invoice["status"]) => {
+  const getStatusBadge = (status: ProformaInvoice["status"]) => {
     const styles = {
       Draft: "bg-gray-500/20 text-gray-300 border-gray-500/30",
       Pending: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-      Paid: "bg-green-500/20 text-green-300 border-green-500/30",
-      Overdue: "bg-red-500/20 text-red-300 border-red-500/30",
       Cancelled: "bg-gray-500/20 text-gray-400 border-gray-500/30",
     };
 
@@ -90,29 +86,12 @@ export default function SalesPage() {
     );
   };
 
-  const getTypeBadge = (type: string) => {
-    return type === "Cash" ? (
-      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-        💵 Cash
-      </Badge>
-    ) : (
-      <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-        📅 Credit
-      </Badge>
-    );
-  };
-
-  const isOverdue = (dueDate: string, status: string) => {
-    if (status === "Paid") return false;
-    return new Date(dueDate) < new Date();
-  };
-
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-brand-yellow-500 mx-auto" />
-          <p className="text-gray-400">Loading invoices...</p>
+          <p className="text-gray-400">Loading proforma invoices...</p>
         </div>
       </div>
     );
@@ -123,7 +102,7 @@ export default function SalesPage() {
       <div className="p-8 flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-red-400">
-            Failed to load invoices: {(error as Error).message}
+            Failed to load proforma invoices: {(error as Error).message}
           </p>
           <Button
             onClick={() => refetch()}
@@ -136,40 +115,38 @@ export default function SalesPage() {
     );
   }
 
-  const invoices: Invoice[] = data?.invoices || [];
+  const proformas: ProformaInvoice[] = data?.invoices || [];
   const totalCount = data?.total || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Sales Invoices</h1>
+          <h1 className="text-3xl font-bold text-white">Proforma Invoices</h1>
           <p className="text-gray-400 mt-1">
-            Manage and track your sales transactions
+            Create and manage quotations and estimates
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button
-            onClick={() => router.push("/dashboard/proforma")}
+            onClick={() => router.push("/dashboard/sales")}
             variant="outline"
             className="border-white/20 text-white hover:bg-white/5"
           >
             <FileText className="mr-2 h-4 w-4" />
-            Proforma Invoices
+            Sales Invoices
           </Button>
           <Button
-            onClick={() => router.push("/dashboard/sales/new")}
+            onClick={() => router.push("/dashboard/proforma/new")}
             className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold"
           >
             <Plus className="mr-2 h-4 w-4" />
-            New Sales
+            New Proforma
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
       <Card className="bg-white/5 border-white/10">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -178,7 +155,7 @@ export default function SalesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search by invoice number, customer name..."
+                  placeholder="Search by proforma number, customer name..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
@@ -200,8 +177,6 @@ export default function SalesPage() {
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="Draft">Draft</SelectItem>
                 <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Paid">Paid</SelectItem>
-                <SelectItem value="Overdue">Overdue</SelectItem>
                 <SelectItem value="Cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
@@ -209,35 +184,34 @@ export default function SalesPage() {
         </CardContent>
       </Card>
 
-      {/* Table */}
       <Card className="bg-white/5 border-white/10">
         <CardHeader>
           <CardTitle className="text-white">
-            Invoices ({totalCount.toLocaleString()})
+            Proforma Invoices ({totalCount.toLocaleString()})
           </CardTitle>
           <CardDescription className="text-gray-400">
             {totalPages > 1 && `Page ${page} of ${totalPages}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {invoices.length === 0 ? (
+          {proformas.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-16 w-16 text-gray-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-300 mb-2">
-                No invoices found
+                No proforma invoices found
               </h3>
               <p className="text-gray-400 mb-6">
                 {debouncedSearch || statusFilter !== "all"
                   ? "Try adjusting your filters"
-                  : "Get started by creating your first invoice"}
+                  : "Get started by creating your first proforma invoice"}
               </p>
               {!debouncedSearch && statusFilter === "all" && (
                 <Button
-                  onClick={() => router.push("/dashboard/sales/new")}
+                  onClick={() => router.push("/dashboard/proforma/new")}
                   className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Invoice
+                  Create Proforma
                 </Button>
               )}
             </div>
@@ -247,11 +221,10 @@ export default function SalesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-white/5">
-                      <TableHead className="text-gray-300">Invoice #</TableHead>
-                      <TableHead className="text-gray-300">Type</TableHead>
+                      <TableHead className="text-gray-300">Proforma #</TableHead>
                       <TableHead className="text-gray-300">Customer</TableHead>
                       <TableHead className="text-gray-300">Amount</TableHead>
-                      <TableHead className="text-gray-300">Due Date</TableHead>
+                      <TableHead className="text-gray-300">Valid Until</TableHead>
                       <TableHead className="text-gray-300">Status</TableHead>
                       <TableHead className="text-gray-300 text-right">
                         Actions
@@ -259,45 +232,33 @@ export default function SalesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoices.map((invoice) => (
+                    {proformas.map((proforma) => (
                       <TableRow
-                        key={invoice.id}
+                        key={proforma.id}
                         onClick={() =>
-                          router.push(`/dashboard/sales/${invoice.id}`)
+                          router.push(`/dashboard/proforma/${proforma.id}`)
                         }
-                        className={`border-white/10 hover:bg-white/5 cursor-pointer ${
-                          isOverdue(invoice.dueDate, invoice.status)
-                            ? "bg-red-500/5"
-                            : ""
-                        }`}
+                        className="border-white/10 hover:bg-white/5 cursor-pointer"
                       >
                         <TableCell className="font-medium text-white">
-                          {invoice.number}
+                          {proforma.number}
                         </TableCell>
-                        <TableCell>{getTypeBadge(invoice.invoiceType)}</TableCell>
                         <TableCell className="text-gray-300">
-                          {invoice.buyerLegalName ||
-                            invoice.buyerTradeName ||
+                          {proforma.buyerLegalName ||
+                            proforma.buyerTradeName ||
                             "—"}
                         </TableCell>
                         <TableCell className="text-white font-medium">
-                          {formatCurrency(invoice.total)}
+                          {formatCurrency(proforma.total)}
                         </TableCell>
                         <TableCell className="text-gray-400">
-                          {invoice.dueDate ? (
-                            <div className="flex flex-col">
-                              <span>
-                                {format(new Date(invoice.dueDate), "MMM dd, yyyy")}
-                              </span>
-                              {isOverdue(invoice.dueDate, invoice.status) && (
-                                <span className="text-xs text-red-400">Overdue</span>
-                              )}
-                            </div>
+                          {proforma.dueDate ? (
+                            format(new Date(proforma.dueDate), "MMM dd, yyyy")
                           ) : (
                             "—"
                           )}
                         </TableCell>
-                        <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                        <TableCell>{getStatusBadge(proforma.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -305,7 +266,7 @@ export default function SalesPage() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/dashboard/sales/${invoice.id}`);
+                                router.push(`/dashboard/proforma/${proforma.id}`);
                               }}
                               className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
                             >
@@ -318,7 +279,7 @@ export default function SalesPage() {
                                 e.stopPropagation();
                                 try {
                                   const response = await axiosInstance.get(
-                                    `/api/sales/${invoice.id}/pdf`,
+                                    `/api/proforma-invoices/${proforma.id}/pdf`,
                                     {
                                       responseType: "blob",
                                     }
@@ -328,7 +289,7 @@ export default function SalesPage() {
                                   const url = window.URL.createObjectURL(blob);
                                   const a = document.createElement("a");
                                   a.href = url;
-                                  a.download = `invoice-${invoice.number}.pdf`;
+                                  a.download = `proforma-${proforma.number}.pdf`;
                                   document.body.appendChild(a);
                                   a.click();
                                   window.URL.revokeObjectURL(url);
@@ -351,25 +312,13 @@ export default function SalesPage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 router.push(
-                                  `/dashboard/sales/${invoice.id}/edit`
+                                  `/dashboard/proforma/${proforma.id}/edit`
                                 );
                               }}
                               className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
-                              disabled={invoice.status !== "Draft"}
+                              disabled={proforma.status !== "Draft"}
                             >
                               <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Delete invoice
-                              }}
-                              className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                              disabled={invoice.status !== "Draft"}
-                            >
-                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -379,13 +328,12 @@ export default function SalesPage() {
                 </Table>
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/10">
                   <p className="text-sm text-gray-400">
                     Showing {(page - 1) * limit + 1} to{" "}
                     {Math.min(page * limit, totalCount)} of {totalCount}{" "}
-                    invoices
+                    proforma invoices
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -416,3 +364,4 @@ export default function SalesPage() {
     </div>
   );
 }
+

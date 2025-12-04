@@ -2,14 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 
-export interface Invoice {
+export interface ProformaInvoice {
   id: string;
   number: string;
   year: number;
   seqValue: number;
-  kind: "Invoice";
+  kind: "Proforma";
 
-  // Buyer information
   buyerType?: string | null;
   buyerLegalName?: string | null;
   buyerTradeName?: string | null;
@@ -20,14 +19,12 @@ export interface Invoice {
   buyerVatNumber?: string | null;
   buyerPhone?: string | null;
 
-  // Financial
   currency: string;
   subtotal: number;
   vatAmount: number;
   total: number;
   totalInWords: string;
 
-  // Invoice details
   goodsOrService: string;
   withheldPct?: number | null;
   withheldAmount?: number | null;
@@ -39,11 +36,9 @@ export interface Invoice {
   invoiceType: "Cash" | "Credit";
   invoiceDate: string;
   dueDate: string;
-  paidDate?: string | null;
 
-  status: "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
+  status: "Draft" | "Pending" | "Cancelled";
 
-  // Personnel
   createdBy?: string | null;
   reviewedBy?: string | null;
   authorizedBy?: string | null;
@@ -55,7 +50,6 @@ export interface Invoice {
   createdAt: string;
   updatedAt: string;
 
-  // Line items
   lines?: Array<{
     id: string;
     description: string;
@@ -67,95 +61,93 @@ export interface Invoice {
   }>;
 }
 
-interface InvoicesResponse {
-  invoices: Invoice[];
+interface ProformasResponse {
+  invoices: ProformaInvoice[];
   total: number;
 }
 
-interface ListInvoicesParams {
+interface ListProformasParams {
   page?: number;
   limit?: number;
   search?: string;
   status?: string;
 }
 
-export function useInvoices(params: ListInvoicesParams = {}) {
+export function useProformaInvoices(params: ListProformasParams = {}) {
   const { page = 1, limit = 20, search = "", status = "all" } = params;
 
   return useQuery({
-    queryKey: ["invoices", page, limit, search, status],
+    queryKey: ["proforma-invoices", page, limit, search, status],
     queryFn: () =>
-      api.get<InvoicesResponse>(
-        `/api/sales?page=${page}&limit=${limit}&search=${search}&status=${status}`,
+      api.get<ProformasResponse>(
+        `/api/proforma-invoices?page=${page}&limit=${limit}&search=${search}&status=${status}`,
         { showErrorToast: false }
       ),
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000,
     retry: false,
   });
 }
 
-export function useInvoice(id: string) {
+export function useProformaInvoice(id: string) {
   return useQuery({
-    queryKey: ["invoice", id],
+    queryKey: ["proforma-invoice", id],
     queryFn: () =>
-      api.get<Invoice>(`/api/sales/${id}`, { showErrorToast: false }),
+      api.get<ProformaInvoice>(`/api/proforma-invoices/${id}`, { showErrorToast: false }),
     enabled: !!id,
     retry: false,
   });
 }
 
-export function useCreateInvoice() {
+export function useCreateProforma() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: any) => api.post("/api/sales", data),
+    mutationFn: (data: any) => api.post("/api/proforma-invoices", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success("Invoice created successfully");
+      queryClient.invalidateQueries({ queryKey: ["proforma-invoices"] });
+      toast.success("Proforma invoice created successfully");
     },
     onError: (error: Error) => {
-      toast.error("Failed to create invoice", {
+      toast.error("Failed to create proforma invoice", {
         description: error.message,
       });
     },
   });
 }
 
-export function useUpdateInvoice() {
+export function useUpdateProforma() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
-      api.patch(`/api/sales/${id}`, data),
+      api.patch(`/api/proforma-invoices/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["invoice", variables.id] });
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success("Invoice updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["proforma-invoice", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["proforma-invoices"] });
+      toast.success("Proforma invoice updated successfully");
     },
     onError: (error: Error) => {
-      toast.error("Failed to update invoice", {
+      toast.error("Failed to update proforma invoice", {
         description: error.message,
       });
     },
   });
 }
 
-export function useDeleteInvoice() {
+export function useDeleteProforma() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/api/sales/${id}`),
+    mutationFn: (id: string) => api.delete(`/api/proforma-invoices/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success("Invoice deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["proforma-invoices"] });
+      toast.success("Proforma invoice deleted successfully");
     },
     onError: (error: Error) => {
-      toast.error("Failed to delete invoice", {
+      toast.error("Failed to delete proforma invoice", {
         description: error.message,
       });
     },
   });
 }
+

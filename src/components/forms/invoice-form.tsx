@@ -106,15 +106,20 @@ export function InvoiceForm({
       invoiceDate: today,
       dueDate: today,
       status: "Pending",
+      applyWithholding: false,
     },
   });
 
   useEffect(() => {
     const data = initialData as any;
-    if (data?.withheldPct && data.withheldPct > 0) {
+    if (data?.applyWithholding !== undefined) {
+      setApplyWithholding(data.applyWithholding);
+      setValue("applyWithholding", data.applyWithholding);
+    } else if (data?.withheldPct && data.withheldPct > 0) {
       setApplyWithholding(true);
+      setValue("applyWithholding", true);
     }
-  }, [initialData]);
+  }, [initialData, setValue]);
 
   useEffect(() => {
     if (mode === "create" && session?.user && !initialData?.createdBy) {
@@ -218,7 +223,7 @@ export function InvoiceForm({
     return lines.map((line) => {
       const quantity = Number(line.quantity) || 0;
       const unitPrice = Number(line.unitPrice) || 0;
-      return quantity * unitPrice;
+      return Math.round(quantity * unitPrice * 100) / 100;
     });
   };
 
@@ -238,9 +243,9 @@ export function InvoiceForm({
   };
 
   const calculateWithholding = () => {
-    if (buyerType === "Company" && goodsOrService === "Service") {
+    if (applyWithholding && buyerType === "Company" && goodsOrService === "Service") {
       const subtotal = calculateSubtotal();
-      return subtotal * 0.02; // 2% withholding
+      return subtotal * 0.02;
     }
     return 0;
   };
@@ -733,15 +738,15 @@ export function InvoiceForm({
             />
           </div>
 
-          {/* Withholding Tax Option */}
           {buyerType === "Company" && goodsOrService === "Service" && (
             <div className="flex items-start space-x-3 p-4 bg-white/5 rounded-lg border border-white/10">
               <Checkbox
                 id="applyWithholding"
                 checked={applyWithholding}
-                onCheckedChange={(checked) =>
-                  setApplyWithholding(checked as boolean)
-                }
+                onCheckedChange={(checked) => {
+                  setApplyWithholding(checked as boolean);
+                  setValue("applyWithholding", checked as boolean);
+                }}
                 className="mt-1 border-white/20 data-[state=checked]:bg-brand-yellow-500 data-[state=checked]:text-black"
               />
               <div className="flex-1">
@@ -956,7 +961,7 @@ export function InvoiceForm({
             goodsOrService === "Service" && (
               <>
                 <div className="flex justify-between items-center py-2 text-red-400">
-                  <span>Withholding Tax (2%):</span>
+                  <span>Withholding Tax (3%):</span>
                   <span className="font-medium">
                     -ETB {calculateWithholding().toFixed(2)}
                   </span>

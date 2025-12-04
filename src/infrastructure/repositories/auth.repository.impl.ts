@@ -45,7 +45,10 @@ export class AuthRepository implements IAuthRepository {
   }
 
   async findOrgById(id: string): Promise<Organization | null> {
-    return await prisma.organization.findUnique({ where: { id } });
+    return await prisma.organization.findUnique({
+      where: { id },
+      include: { logoAttachment: true },
+    });
   }
 
   async createOrg(data: CreateOrgData): Promise<Organization> {
