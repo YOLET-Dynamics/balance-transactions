@@ -75,6 +75,7 @@ export class SalesRepository implements ISalesRepository {
           invoiceDate: data.invoiceDate,
           dueDate: data.dueDate,
           paidDate: data.paidDate,
+          fiscalReceiptNumber: data.fiscalReceiptNumber,
 
           status: data.status || "Pending",
 
@@ -196,6 +197,17 @@ export class SalesRepository implements ISalesRepository {
     return await withTenantContext(orgId, async (tx) => {
       const updateData: any = { ...data };
       delete updateData.lines; // Handle lines separately if needed
+
+      // Convert date strings to Date objects for Prisma
+      if (updateData.paidDate && typeof updateData.paidDate === 'string') {
+        updateData.paidDate = new Date(updateData.paidDate);
+      }
+      if (updateData.invoiceDate && typeof updateData.invoiceDate === 'string') {
+        updateData.invoiceDate = new Date(updateData.invoiceDate);
+      }
+      if (updateData.dueDate && typeof updateData.dueDate === 'string') {
+        updateData.dueDate = new Date(updateData.dueDate);
+      }
 
       const invoice = await tx.salesInvoice.update({
         where: { id },

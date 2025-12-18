@@ -47,6 +47,7 @@ export interface CreateSalesInvoiceData {
   invoiceDate: Date;
   dueDate: Date;
   paidDate?: Date;
+  fiscalReceiptNumber?: string;
 
   status?: InvoiceStatus;
 
@@ -96,6 +97,7 @@ export interface SalesInvoice {
   invoiceDate: string;
   dueDate: string;
   paidDate?: string | null;
+  fiscalReceiptNumber?: string | null;
 
   status: InvoiceStatus;
 

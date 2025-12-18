@@ -162,10 +162,14 @@ export default function InvoiceDetailPage({
       },
       {
         onSuccess: () => {
-          // Update invoice status to Paid
+          // Update invoice status to Paid with fiscal receipt number and paid date
           updateInvoice.mutate({
             id,
-            data: { status: "Paid" },
+            data: {
+              status: "Paid",
+              paidDate: new Date().toISOString(),
+              fiscalReceiptNumber: paymentData.fiscalReceiptNumber,
+            },
           });
           setShowPaymentDialog(false);
         },
@@ -214,6 +218,31 @@ export default function InvoiceDetailPage({
       const errorMessage =
         error instanceof Error ? error.message : "Failed to download PDF";
       alert(`Failed to download PDF: ${errorMessage}`);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleDownloadPaidPdf = async () => {
+    setPdfLoading(true);
+    try {
+      const response = await axiosInstance.get(`/api/sales/${id}/paid-pdf`, {
+        responseType: "blob",
+      });
+
+      const blob = response.data;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoice-${invoice?.number || id}-PAID.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to download paid PDF";
+      alert(`Failed to download paid PDF: ${errorMessage}`);
     } finally {
       setPdfLoading(false);
     }
@@ -378,6 +407,21 @@ export default function InvoiceDetailPage({
             )}
             Download
           </Button>
+
+          {invoice.status === "Paid" && (
+            <Button
+              onClick={handleDownloadPaidPdf}
+              disabled={pdfLoading}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {pdfLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4 mr-2" />
+              )}
+              Download Paid Receipt
+            </Button>
+          )}
 
           {canEdit() && invoice.status === "Draft" && (
             <Button

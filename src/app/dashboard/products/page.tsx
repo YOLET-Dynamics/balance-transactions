@@ -135,18 +135,19 @@ export default function ProductsPage() {
   const totalPages = Math.ceil(totalCount / limit);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Products & Services</h1>
-          <p className="text-gray-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Products & Services</h1>
+          <p className="text-gray-400 mt-1 text-sm sm:text-base">
             Manage your product catalog for quick invoicing
           </p>
         </div>
         <Button
           onClick={() => router.push("/dashboard/products/new")}
-          className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold"
+          className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold text-sm"
+          size="sm"
         >
           <Plus className="mr-2 h-4 w-4" />
           New Product

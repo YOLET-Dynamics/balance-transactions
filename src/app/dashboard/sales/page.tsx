@@ -143,27 +143,30 @@ export default function SalesPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Sales Invoices</h1>
-          <p className="text-gray-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Sales Invoices</h1>
+          <p className="text-gray-400 mt-1 text-sm sm:text-base">
             Manage and track your sales transactions
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Button
             onClick={() => router.push("/dashboard/proforma")}
             variant="outline"
-            className="border-white/20 text-white hover:bg-white/5"
+            className="border-white/20 text-white hover:bg-white/5 text-sm"
+            size="sm"
           >
-            <FileText className="mr-2 h-4 w-4" />
-            Proforma Invoices
+            <FileText className="mr-1 sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Proforma Invoices</span>
+            <span className="sm:hidden">Proforma</span>
           </Button>
           <Button
             onClick={() => router.push("/dashboard/sales/new")}
-            className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold"
+            className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold text-sm"
+            size="sm"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-1 sm:mr-2 h-4 w-4" />
             New Sales
           </Button>
         </div>
@@ -248,10 +251,10 @@ export default function SalesPage() {
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-white/5">
                       <TableHead className="text-gray-300">Invoice #</TableHead>
-                      <TableHead className="text-gray-300">Type</TableHead>
+                      <TableHead className="text-gray-300 hidden sm:table-cell">Type</TableHead>
                       <TableHead className="text-gray-300">Customer</TableHead>
                       <TableHead className="text-gray-300">Amount</TableHead>
-                      <TableHead className="text-gray-300">Due Date</TableHead>
+                      <TableHead className="text-gray-300 hidden md:table-cell">Due Date</TableHead>
                       <TableHead className="text-gray-300">Status</TableHead>
                       <TableHead className="text-gray-300 text-right">
                         Actions
@@ -274,7 +277,7 @@ export default function SalesPage() {
                         <TableCell className="font-medium text-white">
                           {invoice.number}
                         </TableCell>
-                        <TableCell>{getTypeBadge(invoice.invoiceType)}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{getTypeBadge(invoice.invoiceType)}</TableCell>
                         <TableCell className="text-gray-300">
                           {invoice.buyerLegalName ||
                             invoice.buyerTradeName ||
@@ -283,7 +286,7 @@ export default function SalesPage() {
                         <TableCell className="text-white font-medium">
                           {formatCurrency(invoice.total)}
                         </TableCell>
-                        <TableCell className="text-gray-400">
+                        <TableCell className="text-gray-400 hidden md:table-cell">
                           {invoice.dueDate ? (
                             <div className="flex flex-col">
                               <span>
@@ -299,7 +302,7 @@ export default function SalesPage() {
                         </TableCell>
                         <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1 sm:gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -345,6 +348,43 @@ export default function SalesPage() {
                             >
                               <Download className="h-4 w-4" />
                             </Button>
+                            {invoice.status === "Paid" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    const response = await axiosInstance.get(
+                                      `/api/sales/${invoice.id}/paid-pdf`,
+                                      {
+                                        responseType: "blob",
+                                      }
+                                    );
+
+                                    const blob = response.data;
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = `invoice-${invoice.number}-PAID.pdf`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                    document.body.removeChild(a);
+                                  } catch (error) {
+                                    const errorMessage =
+                                      error instanceof Error
+                                        ? error.message
+                                        : "Failed to download paid PDF";
+                                    alert(`Failed to download: ${errorMessage}`);
+                                  }
+                                }}
+                                className="h-8 w-8 p-0 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                title="Download Paid Receipt"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -354,22 +394,10 @@ export default function SalesPage() {
                                   `/dashboard/sales/${invoice.id}/edit`
                                 );
                               }}
-                              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
                               disabled={invoice.status !== "Draft"}
                             >
                               <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Delete invoice
-                              }}
-                              className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                              disabled={invoice.status !== "Draft"}
-                            >
-                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>

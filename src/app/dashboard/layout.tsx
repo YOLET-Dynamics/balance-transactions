@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,15 +25,34 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { data: session, isLoading: sessionLoading } = useSession();
   const logoutMutation = useLogout();
+
+  useEffect(() => {
+    setMounted(true);
+    if (window.innerWidth >= 768) {
+      setSidebarOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mounted && window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  }, [pathname, mounted]);
+
+  const handleLinkClick = () => {
+    if (mounted && window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
-  // Get user initials for avatar
   const getUserInitials = () => {
     if (!session?.user) return "U";
     const first = session.user.firstName?.[0] || "";
@@ -41,7 +60,6 @@ export default function DashboardLayout({
     return (first + last).toUpperCase() || session.user.email[0].toUpperCase();
   };
 
-  // Get display name
   const getDisplayName = () => {
     if (!session?.user) return "User";
     if (session.user.firstName && session.user.lastName) {
@@ -94,11 +112,19 @@ export default function DashboardLayout({
 
   return (
     <div className="h-screen bg-black text-white flex overflow-hidden">
-      {/* Sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       <aside
         className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } border-r border-white/10 bg-black transition-all duration-300 flex flex-col flex-shrink-0`}
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0 ${
+          sidebarOpen ? "w-64" : "md:w-20 w-64"
+        } border-r border-white/10 bg-black transition-all duration-300 flex flex-col flex-shrink-0 fixed md:relative h-full z-50`}
       >
         <div className="p-6 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -136,6 +162,7 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleLinkClick}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   item.active
                     ? "bg-brand-yellow-500 text-black"
@@ -158,6 +185,7 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleLinkClick}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   item.active
                     ? "bg-brand-yellow-500 text-black"
@@ -171,7 +199,6 @@ export default function DashboardLayout({
               </Link>
             );
           })}
-          
 
           <button
             onClick={handleLogout}
@@ -188,10 +215,8 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top Bar */}
-        <header className="h-[73px] border-b border-white/10 bg-black flex-shrink-0 z-10 flex items-center">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden w-full">
+        <header className="h-[73px] border-b border-white/10 bg-black flex-shrink-0 z-30 flex items-center">
           <div className="px-4 flex items-center justify-between w-full">
             <div className="flex items-center gap-4 flex-1">
               <Button
@@ -239,7 +264,6 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        {/* Page Content */}
         <div className="flex-1 overflow-auto">{children}</div>
       </main>
     </div>

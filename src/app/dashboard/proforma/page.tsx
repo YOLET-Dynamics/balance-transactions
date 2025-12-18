@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useProformaInvoices, type ProformaInvoice } from "@/lib/hooks/use-proforma";
+import {
+  useProformaInvoices,
+  type ProformaInvoice,
+} from "@/lib/hooks/use-proforma";
 import { Button } from "@/components/ui/button";
 import { axiosInstance } from "@/lib/api/client";
 import {
@@ -120,28 +123,33 @@ export default function ProformaPage() {
   const totalPages = Math.ceil(totalCount / limit);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Proforma Invoices</h1>
-          <p className="text-gray-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">
+            Proforma Invoices
+          </h1>
+          <p className="text-gray-400 mt-1 text-sm sm:text-base">
             Create and manage quotations and estimates
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Button
             onClick={() => router.push("/dashboard/sales")}
             variant="outline"
-            className="border-white/20 text-white hover:bg-white/5"
+            className="border-white/20 text-white hover:bg-white/5 text-sm"
+            size="sm"
           >
-            <FileText className="mr-2 h-4 w-4" />
-            Sales Invoices
+            <FileText className="mr-1 sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Sales Invoices</span>
+            <span className="sm:hidden">Sales</span>
           </Button>
           <Button
             onClick={() => router.push("/dashboard/proforma/new")}
-            className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold"
+            className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold text-sm"
+            size="sm"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-1 sm:mr-2 h-4 w-4" />
             New Proforma
           </Button>
         </div>
@@ -221,10 +229,14 @@ export default function ProformaPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-white/5">
-                      <TableHead className="text-gray-300">Proforma #</TableHead>
+                      <TableHead className="text-gray-300">
+                        Proforma #
+                      </TableHead>
                       <TableHead className="text-gray-300">Customer</TableHead>
                       <TableHead className="text-gray-300">Amount</TableHead>
-                      <TableHead className="text-gray-300">Valid Until</TableHead>
+                      <TableHead className="text-gray-300">
+                        Valid Until
+                      </TableHead>
                       <TableHead className="text-gray-300">Status</TableHead>
                       <TableHead className="text-gray-300 text-right">
                         Actions
@@ -252,11 +264,9 @@ export default function ProformaPage() {
                           {formatCurrency(proforma.total)}
                         </TableCell>
                         <TableCell className="text-gray-400">
-                          {proforma.dueDate ? (
-                            format(new Date(proforma.dueDate), "MMM dd, yyyy")
-                          ) : (
-                            "—"
-                          )}
+                          {proforma.dueDate
+                            ? format(new Date(proforma.dueDate), "MMM dd, yyyy")
+                            : "—"}
                         </TableCell>
                         <TableCell>{getStatusBadge(proforma.status)}</TableCell>
                         <TableCell className="text-right">
@@ -266,7 +276,9 @@ export default function ProformaPage() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/dashboard/proforma/${proforma.id}`);
+                                router.push(
+                                  `/dashboard/proforma/${proforma.id}`
+                                );
                               }}
                               className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
                             >
@@ -364,4 +376,3 @@ export default function ProformaPage() {
     </div>
   );
 }
-

@@ -331,6 +331,8 @@ model SalesInvoice {
   dueDate     DateTime      @map("due_date")
   paidDate    DateTime?     @map("paid_date")
 
+  fiscalReceiptNumber String? @map("fiscal_receipt_number")
+
   status InvoiceStatus @default(Pending)
 
   createdBy    String? @map("created_by")

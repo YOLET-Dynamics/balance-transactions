@@ -98,19 +98,21 @@ export default function PurchasesPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Purchase Bills</h1>
-          <p className="text-gray-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Purchase Bills</h1>
+          <p className="text-gray-400 mt-1 text-sm sm:text-base">
             Manage and track your purchase expenses
           </p>
         </div>
         <Button
           onClick={() => router.push("/dashboard/purchases/new")}
-          className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold"
+          className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 font-semibold text-sm"
+          size="sm"
         >
-          <Plus className="mr-2 h-4 w-4" />
-          New Purchase Bill
+          <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+          <span className="hidden sm:inline">New Purchase Bill</span>
+          <span className="sm:hidden">New Purchase</span>
         </Button>
       </div>
 
@@ -175,9 +177,9 @@ export default function PurchasesPage() {
                     <TableRow className="border-white/10 hover:bg-transparent">
                       <TableHead className="text-gray-300">Bill Number</TableHead>
                       <TableHead className="text-gray-300">Vendor</TableHead>
-                      <TableHead className="text-gray-300">Reason</TableHead>
+                      <TableHead className="text-gray-300 hidden md:table-cell">Reason</TableHead>
                       <TableHead className="text-gray-300">Amount</TableHead>
-                      <TableHead className="text-gray-300">Date</TableHead>
+                      <TableHead className="text-gray-300 hidden sm:table-cell">Date</TableHead>
                       <TableHead className="text-gray-300 text-right">
                         Actions
                       </TableHead>
@@ -205,13 +207,13 @@ export default function PurchasesPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-300 max-w-xs truncate">
+                        <TableCell className="text-gray-300 max-w-xs truncate hidden md:table-cell">
                           {bill.reason}
                         </TableCell>
                         <TableCell className="text-white font-medium">
                           {formatCurrency(bill.total)}
                         </TableCell>
-                        <TableCell className="text-gray-400">
+                        <TableCell className="text-gray-400 hidden sm:table-cell">
                           {bill.createdAt
                             ? formatDistanceToNow(new Date(bill.createdAt), {
                                 addSuffix: true,

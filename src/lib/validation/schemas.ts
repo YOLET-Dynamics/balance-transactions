@@ -219,6 +219,7 @@ const baseSalesInvoiceSchema = z.object({
   invoiceDate: z.coerce.date(),
   dueDate: z.coerce.date(),
   paidDate: z.coerce.date().optional(),
+  fiscalReceiptNumber: z.string().max(255).optional(),
 
   status: InvoiceStatusEnum.optional(),
   
@@ -242,6 +243,15 @@ export const createSalesInvoiceSchema = baseSalesInvoiceSchema
   .refine((data) => !data.paidDate || data.paidDate >= data.invoiceDate, {
     message: "Paid date must be on or after invoice date",
     path: ["paidDate"],
+  })
+  .refine((data) => {
+    if (data.status === "Paid") {
+      return !!data.fiscalReceiptNumber && data.fiscalReceiptNumber.trim().length > 0;
+    }
+    return true;
+  }, {
+    message: "Fiscal receipt number is required when marking invoice as paid",
+    path: ["fiscalReceiptNumber"],
   });
 
 export const updateSalesInvoiceSchema = baseSalesInvoiceSchema.partial();

@@ -28,6 +28,7 @@ import { Loader2 } from "lucide-react";
 const recordPaymentSchema = z.object({
   method: z.string(),
   amount: z.number().positive(),
+  fiscalReceiptNumber: z.string().min(1, "Fiscal receipt number is required"),
   createdBy: z.string().optional(),
   reviewedBy: z.string().optional(),
   authorizedBy: z.string().optional(),
@@ -70,6 +71,7 @@ export function RecordPaymentDialog({
     defaultValues: {
       method: "Cash",
       amount: defaultAmount,
+      fiscalReceiptNumber: "",
       createdBy: "",
       reviewedBy: "",
       authorizedBy: "",
@@ -153,6 +155,25 @@ export function RecordPaymentDialog({
             {errors.method && (
               <p className="text-red-400 text-sm">{errors.method.message}</p>
             )}
+          </div>
+
+          {/* Fiscal Receipt Number */}
+          <div className="space-y-2">
+            <Label htmlFor="fiscalReceiptNumber" className="text-gray-300">
+              Fiscal Receipt Number *
+            </Label>
+            <Input
+              id="fiscalReceiptNumber"
+              {...register("fiscalReceiptNumber")}
+              className="bg-white/5 border-white/10 text-white font-mono"
+              placeholder="Enter fiscal receipt number"
+            />
+            {errors.fiscalReceiptNumber && (
+              <p className="text-red-400 text-sm">{errors.fiscalReceiptNumber.message}</p>
+            )}
+            <p className="text-xs text-gray-500">
+              Required for all paid invoices
+            </p>
           </div>
 
           {/* Created By */}
