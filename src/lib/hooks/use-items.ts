@@ -21,7 +21,6 @@ export interface Item {
 
 export interface CreateItemInput {
   type: "Good" | "Service";
-  code: string;
   name: string;
   description?: string;
   unit: string;
@@ -111,4 +110,3 @@ export function useDeleteItem() {
     },
   });
 }
-

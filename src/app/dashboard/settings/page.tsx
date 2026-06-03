@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useUploadThing } from "@/lib/uploadthing";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -49,13 +51,18 @@ const organizationSchema = z.object({
   vatNumber: z.string().max(50).optional(),
   phone: z.string().max(20).optional(),
   email: z.string().email("Invalid email").optional(),
+  isWithholdingAgent: z.boolean().default(false),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
+const LOGO_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024;
+
 export default function SettingsPage() {
   const { data: session, isLoading: sessionLoading } = useSession();
+  const queryClient = useQueryClient();
   const updateProfile = useUpdateProfile();
   const updateOrganization = useUpdateOrganization();
   const [activeTab, setActiveTab] = useState("profile");
@@ -64,7 +71,9 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
 
-  const { startUpload } = useUploadThing("logoUploader");
+  const { startUpload, isUploading } = useUploadThing("logoUploader");
+  const currentLogo = session?.organization?.logoAttachment;
+  const isUploadingLogo = uploadingLogo || isUploading;
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -87,6 +96,7 @@ export default function SettingsPage() {
       vatNumber: session?.organization?.vatNumber || "",
       phone: session?.organization?.phone || "",
       email: session?.organization?.email || "",
+      isWithholdingAgent: session?.organization?.isWithholdingAgent || false,
     },
   });
 
@@ -107,12 +117,22 @@ export default function SettingsPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
+      if (!LOGO_MIME_TYPES.has(file.type)) {
+        toast.error("Unsupported file type", {
+          description: "Logo must be a PNG, JPG, or WebP image",
+        });
+        e.target.value = "";
+        return;
+      }
+
+      if (file.size > MAX_LOGO_SIZE_BYTES) {
         toast.error("File too large", {
           description: "Logo must be under 2MB",
         });
+        e.target.value = "";
         return;
       }
+
       setLogoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -127,21 +147,20 @@ export default function SettingsPage() {
 
     setUploadingLogo(true);
     try {
-      const result = await startUpload([logoFile]);
-      if (result && result[0]) {
-        const uploadData = result[0];
-        await api.post("/api/organization/logo", {
-          url: uploadData.url,
-          fileKey: uploadData.key,
-          fileName: uploadData.name,
-          fileSize: uploadData.size,
-        });
+      const result = await startUpload([logoFile], {
+        intent: "organizationLogo",
+      });
+      const upload = result?.[0];
 
-        toast.success("Logo uploaded successfully");
-        setLogoFile(null);
-        setLogoPreview(null);
-        window.location.reload();
+      if (!upload?.serverData?.attachmentId) {
+        throw new Error("Upload finished but the server did not confirm it");
       }
+
+      await queryClient.invalidateQueries({ queryKey: ["session"] });
+
+      toast.success("Logo uploaded successfully");
+      setLogoFile(null);
+      setLogoPreview(null);
     } catch (error) {
       toast.error("Failed to upload logo", {
         description:
@@ -156,8 +175,8 @@ export default function SettingsPage() {
     setRemovingLogo(true);
     try {
       await api.delete("/api/organization/logo");
+      await queryClient.invalidateQueries({ queryKey: ["session"] });
       toast.success("Logo removed successfully");
-      window.location.reload();
     } catch (error) {
       toast.error("Failed to remove logo", {
         description:
@@ -320,152 +339,131 @@ export default function SettingsPage() {
         {canEditOrganization() && (
           <TabsContent value="organization" className="space-y-6">
             <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Organization Logo</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Upload your organization logo (appears on invoices and bills)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {(session?.organization as any)?.logoAttachment ? (
-                    <div className="flex items-center gap-4">
-                      <div className="w-32 h-16 border border-white/10 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+              <CardHeader className="gap-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-white">
+                      {logoPreview ? (
                         <Image
-                          src={
-                            (session?.organization as any)?.logoAttachment
-                              ?.url || ""
-                          }
-                          alt="Organization Logo"
-                          width={120}
-                          height={60}
+                          src={logoPreview}
+                          alt="Logo Preview"
+                          width={112}
+                          height={64}
                           className="object-contain"
                         />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-300">Current Logo</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Size:{" "}
-                          {Math.round(
-                            ((session?.organization as any)?.logoAttachment
-                              ?.size || 0) / 1024
-                          )}
-                          KB
-                        </p>
-                      </div>
-                      <Button
-                        onClick={handleRemoveLogo}
-                        disabled={removingLogo}
-                        variant="outline"
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                      >
-                        {removingLogo ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <X className="h-4 w-4 mr-2" />
-                            Remove
-                          </>
-                        )}
-                      </Button>
+                      ) : currentLogo ? (
+                        <Image
+                          src={currentLogo.url}
+                          alt="Organization Logo"
+                          width={112}
+                          height={64}
+                          className="object-contain"
+                        />
+                      ) : (
+                        <ImageIcon className="h-7 w-7 text-gray-500" />
+                      )}
                     </div>
-                  ) : (
-                    <div className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center">
-                      <ImageIcon className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-                      <p className="text-gray-400 mb-2">No logo uploaded</p>
-                      <p className="text-xs text-gray-500">
-                        PNG or JPG • Max 2MB • Recommended: 400×200px
+                    <div className="min-w-0">
+                      <CardTitle className="text-white">
+                        Organization Details
+                      </CardTitle>
+                      <CardDescription className="mt-1 text-gray-400">
+                        {logoPreview
+                          ? `Preview: ${logoFile?.name || "selected logo"} (${Math.round(
+                              (logoFile?.size || 0) / 1024
+                            )}KB)`
+                          : currentLogo
+                            ? `Logo ready for invoices and bills • ${Math.round(
+                                currentLogo.size / 1024
+                              )}KB`
+                            : "Update your organization information and logo"}
+                      </CardDescription>
+                      <p className="mt-1 text-xs text-gray-500">
+                        PNG, JPG, or WebP • Max 2MB • Recommended 400×200px
                       </p>
                     </div>
-                  )}
+                  </div>
 
-                  {logoPreview && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg border border-white/10">
-                        <div className="w-32 h-16 border border-white/10 rounded-lg overflow-hidden bg-white flex items-center justify-center">
-                          <Image
-                            src={logoPreview}
-                            alt="Logo Preview"
-                            width={120}
-                            height={60}
-                            className="object-contain"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm text-gray-300">Preview</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {logoFile?.name} (
-                            {Math.round((logoFile?.size || 0) / 1024)}KB)
-                          </p>
-                        </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="file"
+                      id="logo-upload"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleLogoChange}
+                      className="hidden"
+                    />
+
+                    {logoPreview ? (
+                      <>
                         <Button
+                          type="button"
+                          onClick={handleLogoUpload}
+                          disabled={isUploadingLogo}
+                          size="sm"
+                          className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600"
+                        >
+                          {isUploadingLogo ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Upload
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
                           onClick={() => {
                             setLogoFile(null);
                             setLogoPreview(null);
                           }}
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="text-gray-400 hover:text-white"
+                          className="border-white/20 text-white hover:bg-white/5"
                         >
-                          <X className="h-4 w-4" />
+                          Cancel
                         </Button>
-                      </div>
-                      <Button
-                        onClick={handleLogoUpload}
-                        disabled={uploadingLogo}
-                        className="bg-brand-yellow-500 text-black hover:bg-brand-yellow-600 w-full"
-                      >
-                        {uploadingLogo ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload Logo
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-
-                  {!logoPreview && (
-                    <div>
-                      <input
-                        type="file"
-                        id="logo-upload"
-                        accept="image/png,image/jpeg,image/jpg"
-                        onChange={handleLogoChange}
-                        className="hidden"
-                      />
-                      <label htmlFor="logo-upload">
+                      </>
+                    ) : (
+                      <>
                         <Button
                           type="button"
                           variant="outline"
-                          className="border-white/20 text-white hover:bg-white/5 w-full cursor-pointer"
+                          size="sm"
+                          className="border-white/20 text-white hover:bg-white/5"
                           onClick={() =>
                             document.getElementById("logo-upload")?.click()
                           }
                         >
                           <Upload className="mr-2 h-4 w-4" />
-                          Choose Logo File
+                          {currentLogo ? "Change Logo" : "Add Logo"}
                         </Button>
-                      </label>
-                    </div>
-                  )}
+                        {currentLogo && (
+                          <Button
+                            type="button"
+                            onClick={handleRemoveLogo}
+                            disabled={removingLogo}
+                            variant="outline"
+                            size="sm"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          >
+                            {removingLogo ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <X className="mr-2 h-4 w-4" />
+                                Remove
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">
-                  Organization Details
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Update your organization information
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form
@@ -607,6 +605,33 @@ export default function SettingsPage() {
                           {organizationForm.formState.errors.email.message}
                         </p>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-4">
+                    <Checkbox
+                      id="isWithholdingAgent"
+                      checked={organizationForm.watch("isWithholdingAgent")}
+                      onCheckedChange={(checked) =>
+                        organizationForm.setValue(
+                          "isWithholdingAgent",
+                          checked === true,
+                          { shouldDirty: true }
+                        )
+                      }
+                      className="mt-1 border-white/20 data-[state=checked]:bg-brand-yellow-500 data-[state=checked]:text-black"
+                    />
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="isWithholdingAgent"
+                        className="text-gray-200 font-medium cursor-pointer"
+                      >
+                        Organization is a withholding company
+                      </Label>
+                      <p className="text-sm text-gray-400">
+                        Purchase bills will default WHT on. Users can turn it
+                        off per bill only with a reason.
+                      </p>
                     </div>
                   </div>
 

@@ -4,13 +4,17 @@ type PaymentMethod = "Cash" | "Cheque" | "BankTransfer" | "POS" | "Mobile";
 type InvoiceStatus = "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
 type InvoiceType = "Cash" | "Credit";
 type InvoiceKind = "Invoice" | "Proforma";
+type ItemType = "Good" | "Service";
 
 export interface SalesInvoiceLine {
+  id?: string;
   itemId?: string;
+  lineType: ItemType;
   description: string;
   unit: string;
   quantity: number;
   unitPrice: number;
+  lineTotal?: number;
   isVatApplicable: boolean;
 }
 
@@ -36,8 +40,8 @@ export interface CreateSalesInvoiceData {
   totalInWords: string;
 
   goodsOrService: GoodsOrService;
-  withheldPct?: number;
-  withheldAmount?: number;
+  withheldPct?: number | null;
+  withheldAmount?: number | null;
   netPayable: number;
 
   paymentMethod: PaymentMethod;
@@ -108,6 +112,17 @@ export interface SalesInvoice {
 
   notes?: string | null;
   pdfAttachmentId?: string | null;
+  lines?: Array<{
+    id: string;
+    itemId?: string | null;
+    lineType: ItemType;
+    description: string;
+    unit: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    isVatApplicable: boolean;
+  }>;
 
   createdAt: string | null;
   updatedAt: string | null;

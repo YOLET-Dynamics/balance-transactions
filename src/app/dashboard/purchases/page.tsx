@@ -62,6 +62,16 @@ export default function PurchasesPage() {
     }).format(amount)}`;
   };
 
+  const isOldOpenBill = (bill: PurchaseBill) => {
+    if (bill.status === "Paid" || bill.status === "Cancelled") return false;
+    if (!bill.createdAt) return false;
+    const ageDays = Math.floor(
+      (Date.now() - new Date(bill.createdAt).getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+    return ageDays >= 30;
+  };
+
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center">
@@ -179,6 +189,7 @@ export default function PurchasesPage() {
                       <TableHead className="text-gray-300">Vendor</TableHead>
                       <TableHead className="text-gray-300 hidden md:table-cell">Reason</TableHead>
                       <TableHead className="text-gray-300">Amount</TableHead>
+                      <TableHead className="text-gray-300 hidden lg:table-cell">Status</TableHead>
                       <TableHead className="text-gray-300 hidden sm:table-cell">Date</TableHead>
                       <TableHead className="text-gray-300 text-right">
                         Actions
@@ -212,6 +223,17 @@ export default function PurchasesPage() {
                         </TableCell>
                         <TableCell className="text-white font-medium">
                           {formatCurrency(bill.total)}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {isOldOpenBill(bill) ? (
+                            <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
+                              Old open
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-white/5 text-gray-300 border-white/10">
+                              {bill.status}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-gray-400 hidden sm:table-cell">
                           {bill.createdAt

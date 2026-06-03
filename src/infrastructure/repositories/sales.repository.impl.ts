@@ -5,6 +5,7 @@ import type {
   SalesInvoice,
   ListOptions,
 } from "../../domain/repositories/sales.repository";
+import { NotFoundError } from "@/lib/utils/errors";
 
 function serializeInvoice(invoice: any): any {
   if (!invoice) return null;
@@ -30,8 +31,15 @@ function serializeInvoice(invoice: any): any {
         quantity: line.quantity ? Number(line.quantity) : 0,
         unitPrice: line.unitPrice ? Number(line.unitPrice) : 0,
         lineTotal: line.lineTotal ? Number(line.lineTotal) : 0,
+        lineType: line.lineType || "Good",
       })) || [],
   };
+}
+
+function stripUndefined<T extends Record<string, unknown>>(data: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(data).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
 }
 
 export class SalesRepository implements ISalesRepository {
@@ -95,6 +103,7 @@ export class SalesRepository implements ISalesRepository {
               quantity: line.quantity,
               unitPrice: line.unitPrice,
               lineTotal: line.lineTotal,
+              lineType: line.lineType,
               isVatApplicable: line.isVatApplicable,
             })),
           },
@@ -110,8 +119,8 @@ export class SalesRepository implements ISalesRepository {
 
   async findById(orgId: string, id: string): Promise<SalesInvoice | null> {
     return await withTenantContext(orgId, async (tx) => {
-      const invoice = await tx.salesInvoice.findUnique({
-        where: { id },
+      const invoice = await tx.salesInvoice.findFirst({
+        where: { id, orgId },
         include: {
           lines: true,
         },
@@ -175,9 +184,6 @@ export class SalesRepository implements ISalesRepository {
           skip: (options.page - 1) * options.limit,
           take: options.limit,
           orderBy: { createdAt: "desc" },
-          include: {
-            lines: true,
-          },
         }),
         tx.salesInvoice.count({ where }),
       ]);
@@ -195,23 +201,68 @@ export class SalesRepository implements ISalesRepository {
     data: Partial<CreateSalesInvoiceData>
   ): Promise<SalesInvoice> {
     return await withTenantContext(orgId, async (tx) => {
-      const updateData: any = { ...data };
-      delete updateData.lines; // Handle lines separately if needed
+      const updateData = stripUndefined({
+        buyerType: data.buyerType,
+        buyerLegalName: data.buyerLegalName,
+        buyerTradeName: data.buyerTradeName,
+        buyerSubcity: data.buyerSubcity,
+        buyerCityRegion: data.buyerCityRegion,
+        buyerCountry: data.buyerCountry,
+        buyerTin: data.buyerTin,
+        buyerVatNumber: data.buyerVatNumber,
+        buyerPhone: data.buyerPhone,
+        subtotal: data.subtotal,
+        vatAmount: data.vatAmount,
+        total: data.total,
+        totalInWords: data.totalInWords,
+        goodsOrService: data.goodsOrService,
+        withheldPct: data.withheldPct,
+        withheldAmount: data.withheldAmount,
+        netPayable: data.netPayable,
+        paymentMethod: data.paymentMethod,
+        paymentRef: data.paymentRef,
+        invoiceType: data.invoiceType,
+        invoiceDate: data.invoiceDate,
+        dueDate: data.dueDate,
+        paidDate: data.paidDate,
+        fiscalReceiptNumber: data.fiscalReceiptNumber,
+        status: data.status,
+        createdBy: data.createdBy,
+        reviewedBy: data.reviewedBy,
+        authorizedBy: data.authorizedBy,
+        receivedBy: data.receivedBy,
+        notes: data.notes,
+      });
 
-      // Convert date strings to Date objects for Prisma
-      if (updateData.paidDate && typeof updateData.paidDate === 'string') {
-        updateData.paidDate = new Date(updateData.paidDate);
-      }
-      if (updateData.invoiceDate && typeof updateData.invoiceDate === 'string') {
-        updateData.invoiceDate = new Date(updateData.invoiceDate);
-      }
-      if (updateData.dueDate && typeof updateData.dueDate === 'string') {
-        updateData.dueDate = new Date(updateData.dueDate);
-      }
-
-      const invoice = await tx.salesInvoice.update({
-        where: { id },
+      const result = await tx.salesInvoice.updateMany({
+        where: { id, orgId },
         data: updateData,
+      });
+
+      if (result.count === 0) {
+        throw new NotFoundError("Invoice not found");
+      }
+
+      if (data.lines) {
+        await tx.salesInvoiceLine.deleteMany({ where: { invoiceId: id } });
+        await tx.salesInvoiceLine.createMany({
+          data: data.lines.map((line: any, index) => ({
+            invoiceId: id,
+            seq: index + 1,
+            itemId: line.itemId,
+            description: line.description,
+            unit: line.unit,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            lineTotal: line.lineTotal,
+            lineType: line.lineType,
+            isVatApplicable: line.isVatApplicable,
+          })),
+        });
+      }
+
+      const invoice = await tx.salesInvoice.findFirst({
+        where: { id, orgId },
         include: {
           lines: true,
         },
@@ -222,7 +273,7 @@ export class SalesRepository implements ISalesRepository {
 
   async delete(orgId: string, id: string): Promise<void> {
     await withTenantContext(orgId, async (tx) => {
-      await tx.salesInvoice.delete({ where: { id } });
+      await tx.salesInvoice.deleteMany({ where: { id, orgId } });
     });
   }
 
@@ -232,8 +283,8 @@ export class SalesRepository implements ISalesRepository {
     attachmentId: string
   ): Promise<void> {
     await withTenantContext(orgId, async (tx) => {
-      await tx.salesInvoice.update({
-        where: { id },
+      await tx.salesInvoice.updateMany({
+        where: { id, orgId },
         data: { pdfAttachmentId: attachmentId },
       });
     });
@@ -242,103 +293,97 @@ export class SalesRepository implements ISalesRepository {
   async getStats(orgId: string, year: number, month: number) {
     return await withTenantContext(orgId, async (tx) => {
       const startOfMonth = new Date(year, month - 1, 1);
-      const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+      const startOfNextMonth = new Date(year, month, 1);
 
-      // Get previous month for growth calculation
       const startOfPrevMonth = new Date(year, month - 2, 1);
-      const endOfPrevMonth = new Date(year, month - 1, 0, 23, 59, 59);
-
-      // Current month stats
-      const currentMonthInvoices = await tx.salesInvoice.findMany({
-        where: {
-          orgId,
-          kind: "Invoice",
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth,
-          },
+      const invoiceMonthWhere = {
+        orgId,
+        kind: "Invoice" as const,
+        createdAt: {
+          gte: startOfMonth,
+          lt: startOfNextMonth,
         },
-        select: {
-          total: true,
-          status: true,
+      };
+
+      const prevInvoiceMonthWhere = {
+        orgId,
+        kind: "Invoice" as const,
+        createdAt: {
+          gte: startOfPrevMonth,
+          lt: startOfMonth,
         },
-      });
+      };
 
-      const prevMonthInvoices = await tx.salesInvoice.findMany({
-        where: {
-          orgId,
-          kind: "Invoice",
-          status: "Paid",
-          createdAt: {
-            gte: startOfPrevMonth,
-            lte: endOfPrevMonth,
-          },
+      const billMonthWhere = {
+        orgId,
+        createdAt: {
+          gte: startOfMonth,
+          lt: startOfNextMonth,
         },
-        select: {
-          total: true,
+      };
+
+      const prevBillMonthWhere = {
+        orgId,
+        createdAt: {
+          gte: startOfPrevMonth,
+          lt: startOfMonth,
         },
-      });
+      };
 
-      // Revenue only from Paid invoices
-      const totalRevenue = currentMonthInvoices
-        .filter((inv) => inv.status === "Paid")
-        .reduce((sum, inv) => sum + Number(inv.total), 0);
+      const [
+        currentRevenue,
+        previousRevenue,
+        totalInvoices,
+        paidInvoices,
+        pendingInvoices,
+        overdueInvoices,
+        draftInvoices,
+        currentExpenses,
+        previousExpenses,
+        totalBills,
+      ] = await Promise.all([
+        tx.salesInvoice.aggregate({
+          where: { ...invoiceMonthWhere, status: "Paid" },
+          _sum: { total: true },
+        }),
+        tx.salesInvoice.aggregate({
+          where: { ...prevInvoiceMonthWhere, status: "Paid" },
+          _sum: { total: true },
+        }),
+        tx.salesInvoice.count({ where: invoiceMonthWhere }),
+        tx.salesInvoice.count({
+          where: { ...invoiceMonthWhere, status: "Paid" },
+        }),
+        tx.salesInvoice.count({
+          where: { ...invoiceMonthWhere, status: "Pending" },
+        }),
+        tx.salesInvoice.count({
+          where: { ...invoiceMonthWhere, status: "Overdue" },
+        }),
+        tx.salesInvoice.count({
+          where: { ...invoiceMonthWhere, status: "Draft" },
+        }),
+        tx.purchaseBill.aggregate({
+          where: billMonthWhere,
+          _sum: { total: true },
+        }),
+        tx.purchaseBill.aggregate({
+          where: prevBillMonthWhere,
+          _sum: { total: true },
+        }),
+        tx.purchaseBill.count({ where: billMonthWhere }),
+      ]);
 
-      const prevMonthRevenue = prevMonthInvoices.reduce(
-        (sum, inv) => sum + Number(inv.total),
-        0
-      );
-
-      // Invoice counts by status
-      const paidInvoices = currentMonthInvoices.filter(
-        (inv) => inv.status === "Paid"
-      ).length;
-      const pendingInvoices = currentMonthInvoices.filter(
-        (inv) => inv.status === "Pending" || inv.status === "Overdue"
-      ).length;
-      const draftInvoices = currentMonthInvoices.filter(
-        (inv) => inv.status === "Draft"
-      ).length;
+      const totalRevenue = Number(currentRevenue._sum.total || 0);
+      const prevMonthRevenue = Number(previousRevenue._sum.total || 0);
+      const totalExpenses = Number(currentExpenses._sum.total || 0);
+      const prevMonthExpenses = Number(previousExpenses._sum.total || 0);
+      const payableInvoiceCount = pendingInvoices + overdueInvoices;
 
       const revenueGrowth =
         prevMonthRevenue > 0
           ? ((totalRevenue - prevMonthRevenue) / prevMonthRevenue) * 100
           : 0;
-
-      const currentMonthBills = await tx.purchaseBill.findMany({
-        where: {
-          orgId,
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth,
-          },
-        },
-        select: {
-          total: true,
-        },
-      });
-
-      const prevMonthBills = await tx.purchaseBill.findMany({
-        where: {
-          orgId,
-          createdAt: {
-            gte: startOfPrevMonth,
-            lte: endOfPrevMonth,
-          },
-        },
-        select: {
-          total: true,
-        },
-      });
-
-      const totalExpenses = currentMonthBills.reduce(
-        (sum, bill) => sum + Number(bill.total),
-        0
-      );
-      const prevMonthExpenses = prevMonthBills.reduce(
-        (sum, bill) => sum + Number(bill.total),
-        0
-      );
 
       const expensesGrowth =
         prevMonthExpenses > 0
@@ -347,13 +392,13 @@ export class SalesRepository implements ISalesRepository {
 
       return {
         totalRevenue,
-        totalInvoices: currentMonthInvoices.length,
+        totalInvoices,
         paidInvoices,
-        pendingInvoices,
+        pendingInvoices: payableInvoiceCount,
         draftInvoices,
         revenueGrowth: Math.round(revenueGrowth * 10) / 10,
         totalExpenses,
-        totalBills: currentMonthBills.length,
+        totalBills,
         expensesGrowth: Math.round(expensesGrowth * 10) / 10,
       };
     });
@@ -368,8 +413,36 @@ export class SalesRepository implements ISalesRepository {
         where: { orgId, kind: "Invoice" },
         orderBy: { createdAt: "desc" },
         take: limit,
-        include: {
-          lines: true,
+        select: {
+          id: true,
+          orgId: true,
+          number: true,
+          year: true,
+          seqValue: true,
+          kind: true,
+          buyerLegalName: true,
+          buyerTradeName: true,
+          currency: true,
+          subtotal: true,
+          vatAmount: true,
+          total: true,
+          totalInWords: true,
+          goodsOrService: true,
+          withheldPct: true,
+          withheldAmount: true,
+          netPayable: true,
+          paymentMethod: true,
+          paymentRef: true,
+          invoiceType: true,
+          invoiceDate: true,
+          dueDate: true,
+          paidDate: true,
+          fiscalReceiptNumber: true,
+          status: true,
+          notes: true,
+          pdfAttachmentId: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
       return invoices.map(serializeInvoice);

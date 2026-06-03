@@ -13,12 +13,13 @@ import {
   addMoney,
   subtractMoney,
 } from "../../lib/utils/money";
-import { NotFoundError } from "../../lib/utils/errors";
+import { NotFoundError, ValidationError } from "../../lib/utils/errors";
 
 type GoodsOrService = "Goods" | "Service";
 type PartyType = "Company" | "Individual";
 type InvoiceStatus = "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
 type InvoiceType = "Cash" | "Credit";
+type ItemType = "Good" | "Service";
 
 interface CreateInvoiceInput {
   buyerType?: PartyType;
@@ -39,6 +40,7 @@ interface CreateInvoiceInput {
   invoiceDate: Date;
   dueDate: Date;
   paidDate?: Date;
+  fiscalReceiptNumber?: string;
 
   status?: InvoiceStatus;
   
@@ -46,6 +48,7 @@ interface CreateInvoiceInput {
 
   lines: Array<{
     itemId?: string;
+    lineType?: ItemType;
     description: string;
     unit: string;
     quantity: number;
@@ -64,15 +67,12 @@ interface CreateInvoiceInput {
 export class SalesService {
   constructor(private salesRepo: ISalesRepository) {}
 
-  async createInvoice(
-    orgId: string,
-    orgCode: string,
-    input: CreateInvoiceInput
-  ): Promise<SalesInvoice> {
-    const docNumber = await sequenceService.allocateNext(orgId, orgCode, "CS");
-
+  private calculateInvoiceData(input: CreateInvoiceInput) {
+    const defaultLineType: ItemType =
+      input.goodsOrService === "Service" ? "Service" : "Good";
     const lines = input.lines.map((line) => ({
       ...line,
+      lineType: line.lineType || defaultLineType,
       lineTotal: roundMoney(line.quantity * line.unitPrice),
     }));
 
@@ -88,31 +88,76 @@ export class SalesService {
 
     const total = addMoney(subtotal, vatAmount);
 
-    const isCompany = input.buyerType === "Company";
-    const isService = input.goodsOrService === "Service";
-    const shouldApplyWithholding = input.applyWithholding && isCompany && isService;
-    const { withheldPct, withheldAmount } = shouldApplyWithholding
-      ? calculateWithholding(subtotal, isCompany, isService)
-      : { withheldPct: 0, withheldAmount: 0 };
+    const { withheldPct, withheldAmount } = calculateWithholding(
+      lines,
+      !!input.applyWithholding
+    );
 
     const netPayable = subtractMoney(total, withheldAmount);
-
     const totalInWords = moneyToWords(total);
 
-    // Hybrid status logic
-    let status: InvoiceStatus = input.status || "Pending";
-    
-    if (input.invoiceType === "Cash") {
-      // Cash invoices: Auto-set to Paid if paidDate provided, otherwise Pending
-      status = input.paidDate ? "Paid" : "Pending";
-    } else {
-      // Credit invoices: Manual status, but auto-set to Overdue if past due date
-      if (!input.status) {
-        const now = new Date();
-        const dueDate = new Date(input.dueDate);
-        status = now > dueDate ? "Overdue" : "Pending";
+    return {
+      lines,
+      subtotal,
+      vatAmount,
+      total,
+      totalInWords,
+      withheldPct,
+      withheldAmount,
+      netPayable,
+    };
+  }
+
+  private resolveInvoiceState(input: {
+    invoiceType: InvoiceType;
+    invoiceDate: Date;
+    dueDate: Date;
+    paidDate?: Date;
+    fiscalReceiptNumber?: string | null;
+    status?: InvoiceStatus;
+  }): { invoiceType: InvoiceType; status: InvoiceStatus; paidDate?: Date } {
+    const fiscalReceiptNumber = input.fiscalReceiptNumber?.trim();
+
+    if (input.invoiceType === "Cash" || input.status === "Paid" || input.paidDate) {
+      if (!fiscalReceiptNumber) {
+        throw new ValidationError("FS number is required for paid sales", {
+          fiscalReceiptNumber: ["FS number is required for paid sales"],
+        });
       }
+
+      return {
+        invoiceType: "Cash",
+        status: "Paid",
+        paidDate: input.paidDate || input.invoiceDate,
+      };
     }
+
+    if (input.status) {
+      return {
+        invoiceType: input.invoiceType,
+        status: input.status,
+        paidDate: undefined,
+      };
+    }
+
+    const now = new Date();
+    const dueDate = new Date(input.dueDate);
+
+    return {
+      invoiceType: input.invoiceType,
+      status: now > dueDate ? "Overdue" : "Pending",
+      paidDate: undefined,
+    };
+  }
+
+  async createInvoice(
+    orgId: string,
+    orgCode: string,
+    input: CreateInvoiceInput
+  ): Promise<SalesInvoice> {
+    const docNumber = await sequenceService.allocateNext(orgId, orgCode, "CS");
+    const totals = this.calculateInvoiceData(input);
+    const state = this.resolveInvoiceState(input);
 
     const invoiceData: CreateSalesInvoiceData = {
       number: docNumber.full,
@@ -130,25 +175,27 @@ export class SalesService {
       buyerVatNumber: input.buyerVatNumber,
       buyerPhone: input.buyerPhone,
 
-      subtotal,
-      vatAmount,
-      total,
-      totalInWords,
+      subtotal: totals.subtotal,
+      vatAmount: totals.vatAmount,
+      total: totals.total,
+      totalInWords: totals.totalInWords,
 
       goodsOrService: input.goodsOrService,
-      withheldPct: withheldPct > 0 ? withheldPct : undefined,
-      withheldAmount: withheldAmount > 0 ? withheldAmount : undefined,
-      netPayable,
+      withheldPct: totals.withheldPct > 0 ? totals.withheldPct : undefined,
+      withheldAmount:
+        totals.withheldAmount > 0 ? totals.withheldAmount : undefined,
+      netPayable: totals.netPayable,
 
       paymentMethod: input.paymentMethod as any,
       paymentRef: input.paymentRef,
 
-      invoiceType: input.invoiceType,
+      invoiceType: state.invoiceType,
       invoiceDate: input.invoiceDate,
       dueDate: input.dueDate,
-      paidDate: input.paidDate,
+      paidDate: state.paidDate,
+      fiscalReceiptNumber: input.fiscalReceiptNumber?.trim(),
 
-      status,
+      status: state.status,
 
       createdBy: input.createdBy,
       reviewedBy: input.reviewedBy,
@@ -157,7 +204,7 @@ export class SalesService {
 
       notes: input.notes,
 
-      lines: lines,
+      lines: totals.lines,
     };
 
     return await this.salesRepo.create(orgId, invoiceData);
@@ -180,9 +227,78 @@ export class SalesService {
     id: string,
     data: Partial<CreateInvoiceInput>
   ): Promise<SalesInvoice> {
-    await this.getInvoiceById(orgId, id);
+    const existing = await this.getInvoiceById(orgId, id);
+    const nextData: any = { ...data };
 
-    return await this.salesRepo.update(orgId, id, data as any);
+    if (data.lines) {
+      const mergedInput: CreateInvoiceInput = {
+        buyerType: data.buyerType ?? existing.buyerType ?? undefined,
+        buyerLegalName: data.buyerLegalName ?? existing.buyerLegalName ?? undefined,
+        buyerTradeName: data.buyerTradeName ?? existing.buyerTradeName ?? undefined,
+        buyerSubcity: data.buyerSubcity ?? existing.buyerSubcity ?? undefined,
+        buyerCityRegion:
+          data.buyerCityRegion ?? existing.buyerCityRegion ?? undefined,
+        buyerCountry: data.buyerCountry ?? existing.buyerCountry ?? undefined,
+        buyerTin: data.buyerTin ?? existing.buyerTin ?? undefined,
+        buyerVatNumber:
+          data.buyerVatNumber ?? existing.buyerVatNumber ?? undefined,
+        buyerPhone: data.buyerPhone ?? existing.buyerPhone ?? undefined,
+        goodsOrService:
+          data.goodsOrService ?? (existing.goodsOrService as GoodsOrService),
+        paymentMethod: data.paymentMethod ?? existing.paymentMethod,
+        paymentRef: data.paymentRef ?? existing.paymentRef ?? undefined,
+        invoiceType: data.invoiceType ?? existing.invoiceType,
+        invoiceDate: data.invoiceDate ?? new Date(existing.invoiceDate),
+        dueDate: data.dueDate ?? new Date(existing.dueDate),
+        paidDate:
+          data.paidDate ?? (existing.paidDate ? new Date(existing.paidDate) : undefined),
+        fiscalReceiptNumber:
+          data.fiscalReceiptNumber ?? existing.fiscalReceiptNumber ?? undefined,
+        status: data.status ?? existing.status,
+        applyWithholding:
+          data.applyWithholding ??
+          (Number(existing.withheldAmount || 0) > 0),
+        lines: data.lines,
+        createdBy: data.createdBy ?? existing.createdBy ?? undefined,
+        reviewedBy: data.reviewedBy ?? existing.reviewedBy ?? undefined,
+        authorizedBy: data.authorizedBy ?? existing.authorizedBy ?? undefined,
+        receivedBy: data.receivedBy ?? existing.receivedBy ?? undefined,
+        notes: data.notes ?? existing.notes ?? undefined,
+      };
+      const totals = this.calculateInvoiceData(mergedInput);
+      Object.assign(nextData, {
+        subtotal: totals.subtotal,
+        vatAmount: totals.vatAmount,
+        total: totals.total,
+        totalInWords: totals.totalInWords,
+        withheldPct: totals.withheldPct > 0 ? totals.withheldPct : null,
+        withheldAmount:
+          totals.withheldAmount > 0 ? totals.withheldAmount : null,
+        netPayable: totals.netPayable,
+        lines: totals.lines,
+      });
+    }
+
+    const state = this.resolveInvoiceState({
+      invoiceType: nextData.invoiceType ?? existing.invoiceType,
+      invoiceDate: nextData.invoiceDate ?? new Date(existing.invoiceDate),
+      dueDate: nextData.dueDate ?? new Date(existing.dueDate),
+      paidDate:
+        nextData.paidDate ??
+        (existing.paidDate ? new Date(existing.paidDate) : undefined),
+      fiscalReceiptNumber:
+        nextData.fiscalReceiptNumber ?? existing.fiscalReceiptNumber,
+      status: nextData.status ?? existing.status,
+    });
+
+    nextData.invoiceType = state.invoiceType;
+    nextData.status = state.status;
+    nextData.paidDate = state.paidDate;
+    if (nextData.fiscalReceiptNumber) {
+      nextData.fiscalReceiptNumber = nextData.fiscalReceiptNumber.trim();
+    }
+
+    return await this.salesRepo.update(orgId, id, nextData);
   }
 
   async deleteInvoice(orgId: string, id: string): Promise<void> {

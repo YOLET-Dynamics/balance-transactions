@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Readable } from "stream";
 import { ZodSchema } from "zod";
 import { formatErrorResponse, ValidationError } from "../utils/errors";
 import {
@@ -14,7 +15,11 @@ export interface RouteContext {
   auth?: AuthContext;
 }
 
-export type RouteHandler<T = any> = (context: RouteContext) => Promise<T>;
+export type RouteHandler<T = unknown> = (context: RouteContext) => Promise<T>;
+
+type ValidatedRequest = NextRequest & {
+  validatedBody?: unknown;
+};
 
 interface RouteConfig {
   requireAuth?: boolean;
@@ -22,7 +27,7 @@ interface RouteConfig {
   bodySchema?: ZodSchema;
 }
 
-export function createRoute<T = any>(
+export function createRoute<T = unknown>(
   handler: RouteHandler<T>,
   config: RouteConfig = {}
 ) {
@@ -31,6 +36,35 @@ export function createRoute<T = any>(
     context?: unknown
   ): Promise<Response> {
     try {
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) {
+        const origin = request.headers.get("origin");
+        if (origin) {
+          try {
+            if (new URL(origin).host !== request.nextUrl.host) {
+              return NextResponse.json(
+                {
+                  error: {
+                    message: "Cross-origin mutation rejected",
+                    code: "CSRF_ORIGIN_MISMATCH",
+                  },
+                },
+                { status: 403 }
+              );
+            }
+          } catch {
+            return NextResponse.json(
+              {
+                error: {
+                  message: "Invalid origin header",
+                  code: "INVALID_ORIGIN",
+                },
+              },
+              { status: 400 }
+            );
+          }
+        }
+      }
+
       const segmentData = context as
         | { params?: Promise<Record<string, string>> }
         | undefined;
@@ -65,7 +99,7 @@ export function createRoute<T = any>(
           throw new ValidationError("Validation failed", errors);
         }
 
-        (request as any).validatedBody = result.data;
+        (request as ValidatedRequest).validatedBody = result.data;
       }
 
       const data = await handler(routeContext);
@@ -83,7 +117,7 @@ export function createRoute<T = any>(
 }
 
 export function getValidatedBody<T>(request: NextRequest): T {
-  return (request as any).validatedBody as T;
+  return (request as ValidatedRequest).validatedBody as T;
 }
 
 export function successResponse<T>(data: T, status: number = 200) {
@@ -104,4 +138,54 @@ export function errorResponse(
     },
     { status }
   );
+}
+
+export function streamNodeResponse(
+  stream: NodeJS.ReadableStream,
+  headers: HeadersInit
+): Response {
+  const webStream = Readable.toWeb(stream as Readable) as ReadableStream;
+  return new Response(webStream, { headers });
+}
+
+export function getPaginationParams(
+  request: NextRequest,
+  defaultLimit: number = 20
+): { page: number; limit: number } {
+  const { searchParams } = new URL(request.url);
+  const page = Number(searchParams.get("page") || "1");
+  const limit = Number(searchParams.get("limit") || defaultLimit.toString());
+
+  return {
+    page: Number.isInteger(page) && page > 0 ? page : 1,
+    limit:
+      Number.isInteger(limit) && limit > 0
+        ? Math.min(limit, 100)
+        : defaultLimit,
+  };
+}
+
+export function getAllowedSearchParam<T extends string>(
+  request: NextRequest,
+  name: string,
+  allowed: readonly T[]
+): T | undefined {
+  const value = request.nextUrl.searchParams.get(name);
+  if (!value || value === "all") return undefined;
+  return allowed.includes(value as T) ? (value as T) : undefined;
+}
+
+export function getYearSearchParam(
+  request: NextRequest,
+  name: string = "year"
+): number | undefined {
+  const value = request.nextUrl.searchParams.get(name);
+  if (!value) return undefined;
+
+  const year = Number(value);
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    return undefined;
+  }
+
+  return year;
 }

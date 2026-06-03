@@ -36,6 +36,7 @@ import {
   useDeletePurchaseBill,
   useUpdatePurchaseBill,
 } from "@/lib/hooks/use-purchases";
+import { useVendorLedger, useVendors } from "@/lib/hooks/use-vendors";
 import { useSession } from "@/lib/hooks/use-session";
 import { useCreatePayment } from "@/lib/hooks/use-payments";
 import { formatDistanceToNow } from "date-fns";
@@ -55,6 +56,17 @@ export default function PurchaseBillDetailPage({
   const deleteBill = useDeletePurchaseBill();
   const updateBill = useUpdatePurchaseBill();
   const createPayment = useCreatePayment();
+  const vendorSearch =
+    bill?.vendorTin || bill?.vendorLegalName || bill?.vendorTradeName || "";
+  const { data: vendorsData } = useVendors(vendorSearch);
+  const matchedVendor = vendorsData?.vendors.find((vendor) => {
+    if (bill?.vendorTin && vendor.tin === bill.vendorTin) return true;
+    if (bill?.vendorLegalName && vendor.legalName === bill.vendorLegalName) {
+      return true;
+    }
+    return !!bill?.vendorTradeName && vendor.tradeName === bill.vendorTradeName;
+  });
+  const { data: vendorLedger } = useVendorLedger(matchedVendor?.id);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -79,6 +91,12 @@ export default function PurchaseBillDetailPage({
       default:
         return "bg-gray-500/20 text-gray-300 border-gray-500/30";
     }
+  };
+
+  const getWhtLineNote = (lineType: string) => {
+    return lineType === "Service"
+      ? "Service WHT threshold: ETB 10,000 before VAT"
+      : "Goods WHT threshold: ETB 20,000 before VAT";
   };
 
   const canEdit = () => {
@@ -431,6 +449,9 @@ export default function PurchaseBillDetailPage({
                           </span>
                         )}
                       </p>
+                      <p className="mt-2 text-xs text-gray-500">
+                        {getWhtLineNote(line.lineType || "Good")}
+                      </p>
                     </div>
                     <p className="text-white font-semibold">
                       {formatCurrency(line.lineTotal)}
@@ -486,6 +507,11 @@ export default function PurchaseBillDetailPage({
                       -{formatCurrency(Number(bill.withheldAmount))}
                     </span>
                   </div>
+                  <p className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-200">
+                    WHT is applied before VAT because this organization is a
+                    withholding agent. Goods use the ETB 20,000 threshold and
+                    services use the ETB 10,000 threshold.
+                  </p>
                   <div className="flex justify-between border-t border-white/10 pt-3">
                     <span className="text-brand-yellow-500 font-medium">
                       Net Paid:
@@ -498,6 +524,44 @@ export default function PurchaseBillDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {vendorLedger && (
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white">Vendor Balance</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Outstanding:</span>
+                  <span className="font-semibold text-white">
+                    {formatCurrency(vendorLedger.summary.outstanding)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Old open bills:</span>
+                  <span className="font-semibold text-red-300">
+                    {formatCurrency(vendorLedger.summary.oldOpen)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Total paid:</span>
+                  <span className="font-semibold text-green-300">
+                    {formatCurrency(vendorLedger.summary.totalPaid)}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-white/20 text-white hover:bg-white/5"
+                  onClick={() =>
+                    router.push(`/dashboard/vendors/${vendorLedger.vendor.id}`)
+                  }
+                >
+                  View vendor ledger
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Payment Details */}
           <Card className="bg-white/5 border-white/10">

@@ -36,6 +36,33 @@ export interface CreateVendorInput {
   notes?: string;
 }
 
+export interface VendorLedgerEntry {
+  id: string;
+  type: "bill" | "payment";
+  date: string;
+  documentNumber: string;
+  label: string;
+  amount: number;
+  paid: number;
+  balance: number;
+  status: string;
+  href: string;
+  daysOpen: number | null;
+}
+
+export interface VendorLedger {
+  vendor: Vendor;
+  summary: {
+    totalBilled: number;
+    totalPaid: number;
+    outstanding: number;
+    oldOpen: number;
+    billCount: number;
+    paymentCount: number;
+  };
+  entries: VendorLedgerEntry[];
+}
+
 export function useVendors(search?: string) {
   return useQuery<{ vendors: Vendor[] }>({
     queryKey: ["vendors", search],
@@ -44,6 +71,16 @@ export function useVendors(search?: string) {
         params: { search },
       }),
     staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+export function useVendorLedger(id?: string) {
+  return useQuery<VendorLedger>({
+    queryKey: ["vendor-ledger", id],
+    queryFn: () => api.get(`/api/vendors/${id}`),
+    enabled: !!id,
+    staleTime: 30 * 1000,
+    retry: false,
   });
 }
 
@@ -61,4 +98,3 @@ export function useCreateVendor() {
     },
   });
 }
-

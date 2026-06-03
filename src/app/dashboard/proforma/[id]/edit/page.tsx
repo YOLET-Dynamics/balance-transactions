@@ -91,8 +91,8 @@ export default function EditProformaPage({
         onSubmit={handleSubmit}
         isLoading={updateProforma.isPending}
         mode="edit"
+        documentKind="proforma"
       />
     </div>
   );
 }
-

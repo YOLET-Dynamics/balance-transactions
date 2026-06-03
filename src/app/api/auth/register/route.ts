@@ -1,22 +1,11 @@
-import { createRoute, getValidatedBody } from '@/lib/api/route-handler';
-import { registerSchema } from '@/lib/validation/schemas';
-import { authService } from '@/application/services/auth.service';
+import { createRoute } from "@/lib/api/route-handler";
+import { ForbiddenError } from "@/lib/utils/errors";
 
 export const POST = createRoute(
-  async ({ request }) => {
-    const body = getValidatedBody<typeof registerSchema._type>(request);
-    
-    const result = await authService.register(body);
-    
-    return {
-      success: true,
-      userId: result.userId,
-      message: result.message,
-    };
+  async () => {
+    throw new ForbiddenError("Public signup is currently disabled");
   },
   {
-    rateLimit: 'auth',
-    bodySchema: registerSchema,
+    rateLimit: "auth",
   }
 );
-

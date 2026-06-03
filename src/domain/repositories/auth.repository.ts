@@ -13,6 +13,15 @@ export interface CreateOrgData {
   createdBy?: string;
 }
 
+export interface Attachment {
+  id: string;
+  fileKey: string;
+  url: string;
+  mime: string;
+  size: number;
+  kind: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -37,6 +46,8 @@ export interface Organization {
   vatNumber?: string | null;
   phone?: string | null;
   email?: string | null;
+  isWithholdingAgent: boolean;
+  logoAttachment?: Attachment | null;
 }
 
 export interface Session {
@@ -59,6 +70,12 @@ export interface IAuthRepository {
   findUserByEmail(email: string): Promise<User | null>;
   findUserById(id: string): Promise<User | null>;
   createUser(data: CreateUserData): Promise<User>;
+  createRegistration(
+    userData: CreateUserData,
+    orgData: CreateOrgData,
+    verificationTokenHash: string,
+    verificationTokenExpiresAt: Date
+  ): Promise<{ user: User; organization: Organization }>;
   updateUser(id: string, data: Partial<CreateUserData>): Promise<User>;
   updateUserEmailVerified(id: string, verified: boolean): Promise<void>;
   updateUserLastLogin(id: string): Promise<void>;
@@ -99,6 +116,11 @@ export interface IAuthRepository {
     tokenHash: string
   ): Promise<{ userId: string; usedAt: Date | null; expiresAt: Date } | null>;
   markEmailVerificationTokenUsed(tokenHash: string): Promise<void>;
+  consumeEmailVerificationToken(
+    userId: string,
+    tokenHash: string,
+    now: Date
+  ): Promise<boolean>;
 
   createPasswordResetToken(
     userId: string,
@@ -109,4 +131,9 @@ export interface IAuthRepository {
     tokenHash: string
   ): Promise<{ userId: string; usedAt: Date | null; expiresAt: Date } | null>;
   markPasswordResetTokenUsed(tokenHash: string): Promise<void>;
+  consumePasswordResetToken(
+    tokenHash: string,
+    passwordHash: string,
+    now: Date
+  ): Promise<boolean>;
 }

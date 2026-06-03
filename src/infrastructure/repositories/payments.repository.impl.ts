@@ -1,17 +1,12 @@
-import { prisma } from "@/infrastructure/database/prisma";
+import { withTenantContext } from "@/infrastructure/database/prisma";
 import type {
   Payment,
   CreatePaymentData,
   ListOptions,
   IPaymentsRepository,
+  RelatedType,
 } from "@/domain/repositories/payments.repository";
-
-async function withTenantContext<T>(
-  orgId: string,
-  operation: (tx: typeof prisma) => Promise<T>
-): Promise<T> {
-  return operation(prisma);
-}
+import { NotFoundError } from "@/lib/utils/errors";
 
 function serializePayment(payment: any): Payment {
   if (!payment) return payment;
@@ -36,6 +31,7 @@ class PaymentsRepositoryImpl implements IPaymentsRepository {
           currency: data.currency || "ETB",
           relatedType: data.relatedType as any,
           relatedId: data.relatedId,
+          advanceReceiptNumber: data.advanceReceiptNumber,
           createdBy: data.createdBy,
           reviewedBy: data.reviewedBy,
           authorizedBy: data.authorizedBy,
@@ -51,6 +47,10 @@ class PaymentsRepositoryImpl implements IPaymentsRepository {
       const payment = await tx.payment.findFirst({
         where: { id, orgId },
       });
+
+      if (!payment) {
+        throw new NotFoundError("Payment not found");
+      }
 
       return serializePayment(payment);
     });
@@ -72,6 +72,14 @@ class PaymentsRepositoryImpl implements IPaymentsRepository {
 
       if (options.direction) {
         where.direction = options.direction;
+      }
+
+      if (options.relatedType) {
+        where.relatedType = options.relatedType;
+      }
+
+      if (options.relatedId) {
+        where.relatedId = options.relatedId;
       }
 
       if (options.year) {
@@ -109,8 +117,8 @@ class PaymentsRepositoryImpl implements IPaymentsRepository {
     data: Partial<CreatePaymentData>
   ): Promise<Payment> {
     return await withTenantContext(orgId, async (tx) => {
-      const payment = await tx.payment.update({
-        where: { id },
+      const result = await tx.payment.updateMany({
+        where: { id, orgId },
         data: {
           direction: data.direction as any,
           method: data.method as any,
@@ -118,10 +126,19 @@ class PaymentsRepositoryImpl implements IPaymentsRepository {
           currency: data.currency,
           relatedType: data.relatedType as any,
           relatedId: data.relatedId,
+          advanceReceiptNumber: data.advanceReceiptNumber,
           createdBy: data.createdBy,
           reviewedBy: data.reviewedBy,
           authorizedBy: data.authorizedBy,
         },
+      });
+
+      if (result.count === 0) {
+        throw new NotFoundError("Payment not found");
+      }
+
+      const payment = await tx.payment.findFirst({
+        where: { id, orgId },
       });
 
       return serializePayment(payment);
@@ -130,9 +147,11 @@ class PaymentsRepositoryImpl implements IPaymentsRepository {
 
   async delete(orgId: string, id: string): Promise<void> {
     await withTenantContext(orgId, async (tx) => {
-      await tx.payment.delete({
-        where: { id },
-      });
+      const result = await tx.payment.deleteMany({ where: { id, orgId } });
+
+      if (result.count === 0) {
+        throw new NotFoundError("Payment not found");
+      }
     });
   }
 
@@ -147,7 +166,21 @@ class PaymentsRepositoryImpl implements IPaymentsRepository {
       return payments.map(serializePayment);
     });
   }
+
+  async sumForRelated(
+    orgId: string,
+    relatedType: RelatedType,
+    relatedId: string
+  ): Promise<number> {
+    return await withTenantContext(orgId, async (tx) => {
+      const result = await tx.payment.aggregate({
+        where: { orgId, relatedType: relatedType as any, relatedId },
+        _sum: { amount: true },
+      });
+
+      return Number(result._sum.amount || 0);
+    });
+  }
 }
 
 export const paymentsRepository = new PaymentsRepositoryImpl();
-

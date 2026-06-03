@@ -1,6 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 
+interface Attachment {
+  id: string;
+  fileKey: string;
+  url: string;
+  mime: string;
+  size: number;
+  kind: string;
+}
+
 interface Organization {
   id: string;
   code: string;
@@ -13,6 +22,8 @@ interface Organization {
   vatNumber?: string | null;
   phone?: string | null;
   email?: string | null;
+  isWithholdingAgent: boolean;
+  logoAttachment?: Attachment | null;
 }
 
 interface User {

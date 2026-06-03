@@ -158,6 +158,7 @@ export const createOrganizationSchema = z.object({
   phone: ethiopianPhoneSchema,
   email: emailSchema.optional(),
   website: z.string().url().optional().or(z.literal("")),
+  isWithholdingAgent: z.boolean().optional(),
 });
 
 export const updateOrganizationSchema = createOrganizationSchema.partial();
@@ -193,6 +194,7 @@ export const updateTaxRateSchema = createTaxRateSchema.partial();
 
 export const salesInvoiceLineSchema = z.object({
   itemId: uuidSchema.optional(),
+  lineType: ItemTypeEnum.default("Good"),
   description: z.string().min(1).max(500),
   unit: z.string().min(1).max(50),
   quantity: z.number().positive(),
@@ -219,7 +221,7 @@ const baseSalesInvoiceSchema = z.object({
   invoiceDate: z.coerce.date(),
   dueDate: z.coerce.date(),
   paidDate: z.coerce.date().optional(),
-  fiscalReceiptNumber: z.string().max(255).optional(),
+  fiscalReceiptNumber: z.string().trim().max(255).optional(),
 
   status: InvoiceStatusEnum.optional(),
   
@@ -245,12 +247,12 @@ export const createSalesInvoiceSchema = baseSalesInvoiceSchema
     path: ["paidDate"],
   })
   .refine((data) => {
-    if (data.status === "Paid") {
-      return !!data.fiscalReceiptNumber && data.fiscalReceiptNumber.trim().length > 0;
+    if (data.invoiceType === "Cash" || data.status === "Paid" || data.paidDate) {
+      return !!data.fiscalReceiptNumber && data.fiscalReceiptNumber.length > 0;
     }
     return true;
   }, {
-    message: "Fiscal receipt number is required when marking invoice as paid",
+    message: "FS number is required for paid sales and cash sales attachments",
     path: ["fiscalReceiptNumber"],
   });
 
@@ -272,6 +274,7 @@ export const updateProformaInvoiceSchema = baseProformaInvoiceSchema.partial();
 
 export const purchaseBillLineSchema = z.object({
   itemId: uuidSchema.optional(),
+  lineType: ItemTypeEnum.default("Good"),
   description: z.string().min(1).max(500),
   unit: z.string().min(1).max(50),
   quantity: z.number().positive(),
@@ -295,6 +298,8 @@ export const createPurchaseBillSchema = z.object({
   paymentRef: z.string().max(255).optional(),
 
   status: InvoiceStatusEnum.optional(),
+  applyWithholding: z.boolean().optional(),
+  withholdingOverrideReason: z.string().trim().max(1000).optional(),
 
   lines: z.array(purchaseBillLineSchema).min(1),
 
@@ -311,6 +316,8 @@ export const createPaymentSchema = z.object({
   amount: moneySchema,
   relatedType: RelatedTypeEnum,
   relatedId: uuidSchema.optional(),
+  advanceReceiptNumber: z.string().trim().max(255).optional(),
+  fiscalReceiptNumber: z.string().trim().max(255).optional(),
 
   createdBy: z.string().max(255).optional(),
   reviewedBy: z.string().max(255).optional(),

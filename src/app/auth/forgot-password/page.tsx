@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
 
   if (emailSent) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-[#0a0a0a] text-white">
         <div className="absolute top-6 left-6 z-10">
           <Link
             href="/auth/login"
@@ -61,15 +61,15 @@ export default function ForgotPasswordPage() {
         <div className="flex items-center justify-center min-h-screen px-6">
           <div className="w-full max-w-md space-y-8">
             <div className="text-center">
-              <h1 className="text-3xl font-logo font-bold mb-2">Balance</h1>
+              <h1 className="text-3xl font-logo mb-2">Balance</h1>
             </div>
 
             <div className="border border-white/10 rounded-2xl p-8 bg-white/5 text-center space-y-6">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-brand-yellow-500/10">
-                <Mail className="h-8 w-8 text-brand-yellow-500" />
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.06]">
+                <Mail className="h-8 w-8 text-white" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-semibold text-white">
                   Check your email
                 </h2>
                 <p className="text-gray-400">
@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Back to login link */}
       <div className="absolute top-6 left-6 z-10">
         <Link
@@ -112,7 +112,7 @@ export default function ForgotPasswordPage() {
         {/* Left Column - Branding */}
         <div className="hidden lg:flex flex-col justify-center px-12 xl:px-20 border-r border-white/10">
           <div className="max-w-lg">
-            <h1 className="text-5xl xl:text-6xl font-logo font-bold mb-6">
+            <h1 className="text-5xl xl:text-6xl font-logo mb-6">
               Balance
             </h1>
             <p className="text-xl text-gray-400 mb-8">
@@ -127,21 +127,21 @@ export default function ForgotPasswordPage() {
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">Quick & Secure</h3>
+                  <h3 className="font-medium mb-1">Quick & Secure</h3>
                   <p className="text-sm text-gray-500">Reset your password in minutes</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">Verified Email</h3>
+                  <h3 className="font-medium mb-1">Verified Email</h3>
                   <p className="text-sm text-gray-500">We'll only send the link to your registered email</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">24/7 Access</h3>
+                  <h3 className="font-medium mb-1">24/7 Access</h3>
                   <p className="text-sm text-gray-500">Reset your password anytime, anywhere</p>
                 </div>
               </div>
@@ -154,13 +154,13 @@ export default function ForgotPasswordPage() {
           <div className="w-full max-w-md space-y-8">
             {/* Mobile Logo */}
             <div className="text-center lg:hidden">
-              <h1 className="text-3xl font-logo font-bold mb-2">Balance</h1>
+              <h1 className="text-3xl font-logo mb-2">Balance</h1>
               <p className="text-gray-400">Reset your password</p>
             </div>
 
             {/* Desktop Heading */}
             <div className="hidden lg:block">
-              <h2 className="text-3xl font-bold mb-2">Reset your password</h2>
+              <h2 className="text-3xl font-semibold tracking-tight mb-2">Reset your password</h2>
               <p className="text-gray-400">Enter your email to receive a reset link</p>
             </div>
 
@@ -177,7 +177,7 @@ export default function ForgotPasswordPage() {
                   id="email"
                   type="email"
                   placeholder="you@example.com"
-                  className="bg-black border-white/20 text-white placeholder:text-gray-500"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-gray-500"
                   {...register("email")}
                 />
                 {errors.email && (
@@ -207,7 +207,7 @@ export default function ForgotPasswordPage() {
                 Remember your password?{" "}
                 <Link
                   href="/auth/login"
-                  className="text-brand-yellow-500 hover:text-brand-yellow-600 font-medium transition-colors"
+                  className="text-white hover:text-gray-300 font-medium transition-colors"
                 >
                   Sign in
                 </Link>

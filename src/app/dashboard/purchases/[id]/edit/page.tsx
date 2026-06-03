@@ -80,6 +80,7 @@ export default function EditPurchaseBillPage({
         quantity: line.quantity,
         unitPrice: line.unitPrice,
         discountAmount: line.discountAmount || 0,
+        lineType: line.lineType || "Good",
         isVatApplicable: line.isVatApplicable,
         itemId: line.itemId || undefined,
       })) || [],

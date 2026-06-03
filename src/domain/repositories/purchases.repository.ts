@@ -1,8 +1,10 @@
 export type BillStatus = "Draft" | "Pending" | "Paid" | "Overdue" | "Cancelled";
+export type PurchaseLineType = "Good" | "Service";
 
 export interface PurchaseBillLine {
   id?: string;
   itemId?: string | null;
+  lineType: PurchaseLineType;
   description: string;
   unit: string;
   quantity: number;
@@ -33,6 +35,7 @@ export interface CreatePurchaseBillData {
 
   withheldPct?: number | null;
   withheldAmount?: number | null;
+  withholdingOverrideReason?: string | null;
   netPaid: number;
 
   reason: string;
@@ -47,6 +50,7 @@ export interface CreatePurchaseBillData {
 
   lines: Array<{
     itemId?: string | null;
+    lineType: PurchaseLineType;
     description: string;
     unit: string;
     quantity: number;
@@ -80,6 +84,7 @@ export interface PurchaseBill {
 
   withheldPct: number | null;
   withheldAmount: number | null;
+  withholdingOverrideReason: string | null;
   netPaid: number;
 
   reason: string;

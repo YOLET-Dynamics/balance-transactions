@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "start": "next start",
+    "build": "prisma generate && next build --webpack",
+    "postbuild": "mkdir -p .next/standalone/.next && cp -R .next/static .next/standalone/.next/ && cp -R public .next/standalone/",
+    "start": "if test -f .next/standalone/server.js; then node .next/standalone/server.js; else echo 'Missing .next/standalone/server.js. Run npm run build first and make sure it passes.'; exit 1; fi",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -69,7 +70,7 @@
     "ioredis": "^5.8.2",
     "katex": "^0.16.22",
     "lucide-react": "^0.454.0",
-    "next": "15.2.8",
+    "next": "16.2.5",
     "next-themes": "^0.4.4",
     "react": "^19",
     "react-day-picker": "9.11.1",
@@ -103,17 +104,6 @@
     "prisma": "^6.2.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "prisma"
-    ],
-    "ignoredBuiltDependencies": [
-      "msgpackr-extract",
-      "sharp"
-    ]
   },
   "description": "",
   "main": "index.js",

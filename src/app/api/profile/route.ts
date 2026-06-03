@@ -1,4 +1,4 @@
-import { createRoute } from "@/lib/api/route-handler";
+import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
 import { prisma } from "@/infrastructure/database/prisma";
 import { z } from "zod";
 
@@ -10,8 +10,9 @@ const updateProfileSchema = z.object({
 
 export const PATCH = createRoute(
   async ({ request, auth }) => {
-    const body = await request.json();
-    const validated = updateProfileSchema.parse(body);
+    const validated = getValidatedBody<z.infer<typeof updateProfileSchema>>(
+      request
+    );
 
     const user = await prisma.user.update({
       where: { id: auth!.userId },
@@ -35,5 +36,6 @@ export const PATCH = createRoute(
   {
     requireAuth: true,
     rateLimit: "mutations",
+    bodySchema: updateProfileSchema,
   }
 );

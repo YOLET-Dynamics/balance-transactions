@@ -58,6 +58,8 @@ export interface Invoice {
   // Line items
   lines?: Array<{
     id: string;
+    itemId?: string | null;
+    lineType: "Good" | "Service";
     description: string;
     unit: string;
     quantity: number;

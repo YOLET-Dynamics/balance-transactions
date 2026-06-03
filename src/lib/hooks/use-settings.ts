@@ -18,6 +18,7 @@ export interface UpdateOrganizationInput {
   vatNumber?: string;
   phone?: string;
   email?: string;
+  isWithholdingAgent?: boolean;
 }
 
 export function useUpdateProfile() {
@@ -50,4 +51,3 @@ export function useUpdateOrganization() {
     },
   });
 }
-

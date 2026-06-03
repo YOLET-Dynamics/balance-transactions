@@ -1,4 +1,10 @@
-import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
+import {
+  createRoute,
+  getAllowedSearchParam,
+  getPaginationParams,
+  getValidatedBody,
+  getYearSearchParam,
+} from "@/lib/api/route-handler";
 import { requireRole } from "@/lib/middleware/auth.middleware";
 import { paymentsService } from "@/application/services/payments.service";
 import { createPaymentSchema } from "@/lib/validation/schemas";
@@ -6,19 +12,27 @@ import { createPaymentSchema } from "@/lib/validation/schemas";
 export const GET = createRoute(
   async ({ request, auth }) => {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const { page, limit } = getPaginationParams(request);
     const search = searchParams.get("search") || undefined;
-    const direction = searchParams.get("direction") as any;
-    const year = searchParams.get("year")
-      ? parseInt(searchParams.get("year")!)
-      : undefined;
+    const direction = getAllowedSearchParam(request, "direction", [
+      "Incoming",
+      "Outgoing",
+    ] as const);
+    const relatedType = getAllowedSearchParam(request, "relatedType", [
+      "Invoice",
+      "Bill",
+      "None",
+    ] as const);
+    const relatedId = searchParams.get("relatedId") || undefined;
+    const year = getYearSearchParam(request);
 
     const result = await paymentsService.listPayments(auth!.orgId, {
       page,
       limit,
       search,
       direction,
+      relatedType,
+      relatedId,
       year,
     });
 
@@ -46,4 +60,3 @@ export const POST = createRoute(
     bodySchema: createPaymentSchema,
   }
 );
-

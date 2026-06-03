@@ -51,7 +51,7 @@ function ResetPasswordContent() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-6">
         <div className="absolute top-6 left-6 z-10">
           <Link
             href="/"
@@ -64,12 +64,12 @@ function ResetPasswordContent() {
 
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-logo font-bold mb-2">Balance</h1>
+            <h1 className="text-3xl font-logo mb-2">Balance</h1>
           </div>
 
           <div className="border border-white/10 rounded-2xl p-8 bg-white/5 text-center space-y-6">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-white">Invalid reset link</h2>
+              <h2 className="text-2xl font-semibold text-white">Invalid reset link</h2>
               <p className="text-gray-400">
                 The password reset link is invalid or has expired. Please request a new one.
               </p>
@@ -88,7 +88,7 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Back to home link */}
       <div className="absolute top-6 left-6 z-10">
         <Link
@@ -104,7 +104,7 @@ function ResetPasswordContent() {
         {/* Left Column - Branding */}
         <div className="hidden lg:flex flex-col justify-center px-12 xl:px-20 border-r border-white/10">
           <div className="max-w-lg">
-            <h1 className="text-5xl xl:text-6xl font-logo font-bold mb-6">
+            <h1 className="text-5xl xl:text-6xl font-logo mb-6">
               Balance
             </h1>
             <p className="text-xl text-gray-400 mb-8">
@@ -118,21 +118,21 @@ function ResetPasswordContent() {
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">Secure Storage</h3>
+                  <h3 className="font-medium mb-1">Secure Storage</h3>
                   <p className="text-sm text-gray-500">Your password is encrypted with industry-standard bcrypt</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">Minimum 8 Characters</h3>
+                  <h3 className="font-medium mb-1">Minimum 8 Characters</h3>
                   <p className="text-sm text-gray-500">Use a mix of letters, numbers, and special characters</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">One-Time Link</h3>
+                  <h3 className="font-medium mb-1">One-Time Link</h3>
                   <p className="text-sm text-gray-500">This reset link can only be used once</p>
                 </div>
               </div>
@@ -145,13 +145,13 @@ function ResetPasswordContent() {
           <div className="w-full max-w-md space-y-8">
             {/* Mobile Logo */}
             <div className="text-center lg:hidden">
-              <h1 className="text-3xl font-logo font-bold mb-2">Balance</h1>
+              <h1 className="text-3xl font-logo mb-2">Balance</h1>
               <p className="text-gray-400">Set your new password</p>
             </div>
 
             {/* Desktop Heading */}
             <div className="hidden lg:block">
-              <h2 className="text-3xl font-bold mb-2">Set your new password</h2>
+              <h2 className="text-3xl font-semibold tracking-tight mb-2">Set your new password</h2>
               <p className="text-gray-400">Enter a secure password for your account</p>
             </div>
 
@@ -168,7 +168,7 @@ function ResetPasswordContent() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  className="bg-black border-white/20 text-white placeholder:text-gray-500"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-gray-500"
                   {...register("password")}
                 />
                 {errors.password && (
@@ -194,7 +194,7 @@ function ResetPasswordContent() {
                   id="confirmPassword"
                   type="password"
                   placeholder="••••••••"
-                  className="bg-black border-white/20 text-white placeholder:text-gray-500"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-gray-500"
                   {...register("confirmPassword")}
                 />
                 {errors.confirmPassword && (
@@ -221,7 +221,7 @@ function ResetPasswordContent() {
                 Remember your password?{" "}
                 <Link
                   href="/auth/login"
-                  className="text-brand-yellow-500 hover:text-brand-yellow-600 font-medium transition-colors"
+                  className="text-white hover:text-gray-300 font-medium transition-colors"
                 >
                   Sign in
                 </Link>
@@ -238,7 +238,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-brand-yellow-500" />
         </div>
       }

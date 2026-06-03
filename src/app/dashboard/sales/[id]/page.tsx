@@ -42,7 +42,7 @@ import {
   useUpdateInvoice,
 } from "@/lib/hooks/use-sales";
 import { useSession } from "@/lib/hooks/use-session";
-import { useCreatePayment } from "@/lib/hooks/use-payments";
+import { useCreatePayment, usePayments } from "@/lib/hooks/use-payments";
 import { formatDistanceToNow, format } from "date-fns";
 import { RecordPaymentDialog } from "@/components/dialogs/record-payment-dialog";
 
@@ -58,6 +58,12 @@ export default function InvoiceDetailPage({
   const deleteInvoice = useDeleteInvoice();
   const updateInvoice = useUpdateInvoice();
   const createPayment = useCreatePayment();
+  const { data: paymentsData } = usePayments({
+    relatedType: "Invoice",
+    relatedId: id,
+    direction: "Incoming",
+    limit: 100,
+  });
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
@@ -86,14 +92,14 @@ export default function InvoiceDetailPage({
     );
   };
 
-  const getTypeBadge = (type: string) => {
-    return type === "Cash" ? (
+  const getTypeBadge = (type: string, status: string) => {
+    return type === "Cash" || status === "Paid" ? (
       <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-        💵 Cash Sale
+        Cash Sales Attachment
       </Badge>
     ) : (
       <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-        📅 Credit Sale
+        Credit Invoice
       </Badge>
     );
   };
@@ -123,6 +129,14 @@ export default function InvoiceDetailPage({
       invoice.status === "Pending"
     );
   };
+
+  const amountPaid =
+    paymentsData?.payments.reduce((sum, payment) => sum + payment.amount, 0) ||
+    0;
+  const balanceDue = Math.max(
+    Number(invoice?.netPayable || invoice?.total || 0) - amountPaid,
+    0
+  );
 
   const canSubmit = () => {
     if (!session?.membership || !invoice) return false;
@@ -156,21 +170,14 @@ export default function InvoiceDetailPage({
         amount: paymentData.amount,
         relatedType: "Invoice",
         relatedId: id,
+        advanceReceiptNumber: paymentData.advanceReceiptNumber,
+        fiscalReceiptNumber: paymentData.fiscalReceiptNumber,
         createdBy: paymentData.createdBy,
         reviewedBy: paymentData.reviewedBy,
         authorizedBy: paymentData.authorizedBy,
       },
       {
         onSuccess: () => {
-          // Update invoice status to Paid with fiscal receipt number and paid date
-          updateInvoice.mutate({
-            id,
-            data: {
-              status: "Paid",
-              paidDate: new Date().toISOString(),
-              fiscalReceiptNumber: paymentData.fiscalReceiptNumber,
-            },
-          });
           setShowPaymentDialog(false);
         },
       }
@@ -292,10 +299,10 @@ export default function InvoiceDetailPage({
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
           <Button
             variant="ghost"
             size="sm"
@@ -306,7 +313,7 @@ export default function InvoiceDetailPage({
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="break-all text-2xl font-bold text-white sm:text-3xl">
                 {invoice.number}
               </h1>
               {getStatusBadge(invoice.status)}
@@ -322,7 +329,7 @@ export default function InvoiceDetailPage({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canSubmit() && (
             <Button
               onClick={() => handleStatusChange("Pending")}
@@ -419,7 +426,7 @@ export default function InvoiceDetailPage({
               ) : (
                 <FileText className="h-4 w-4 mr-2" />
               )}
-              Download Paid Receipt
+              Download Cash Sales Attachment
             </Button>
           )}
 
@@ -479,7 +486,7 @@ export default function InvoiceDetailPage({
               <CardTitle className="text-white">Buyer Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-sm text-gray-400">Type</p>
                   <p className="text-white">{invoice.buyerType || "—"}</p>
@@ -491,7 +498,7 @@ export default function InvoiceDetailPage({
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-sm text-gray-400">Legal Name</p>
                   <p className="text-white">{invoice.buyerLegalName || "—"}</p>
@@ -501,7 +508,7 @@ export default function InvoiceDetailPage({
                   <p className="text-white">{invoice.buyerTradeName || "—"}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-sm text-gray-400">Phone</p>
                   <p className="text-white">{invoice.buyerPhone || "—"}</p>
@@ -549,6 +556,12 @@ export default function InvoiceDetailPage({
                         VAT Applicable
                       </Badge>
                     )}
+                    <Badge
+                      variant="outline"
+                      className="ml-2 bg-white/5 text-gray-300 border-white/10 text-xs"
+                    >
+                      {line.lineType || "Good"}
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -567,6 +580,43 @@ export default function InvoiceDetailPage({
               </CardContent>
             </Card>
           )}
+
+          <Card className="bg-white/5 border-white/10">
+            <CardHeader>
+              <CardTitle className="text-white">Payment Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {paymentsData?.payments.length ? (
+                paymentsData.payments.map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/5 p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white">
+                        {payment.method} payment
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {payment.createdAt
+                          ? format(new Date(payment.createdAt), "PPP")
+                          : "Unknown date"}
+                        {payment.advanceReceiptNumber
+                          ? ` · Advance receipt ${payment.advanceReceiptNumber}`
+                          : ""}
+                      </p>
+                    </div>
+                    <p className="whitespace-nowrap text-sm font-semibold text-green-300">
+                      {formatCurrency(payment.amount)}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="py-6 text-center text-sm text-gray-400">
+                  No partial payments recorded yet.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -611,6 +661,22 @@ export default function InvoiceDetailPage({
                   </div>
                 </>
               )}
+              {amountPaid > 0 && invoice.status !== "Paid" && (
+                <>
+                  <div className="flex justify-between items-center pt-3 border-t border-white/10">
+                    <span className="text-gray-300">Paid to Date:</span>
+                    <span className="text-green-400 font-medium">
+                      {formatCurrency(amountPaid)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300">Balance Due:</span>
+                    <span className="text-white font-semibold">
+                      {formatCurrency(balanceDue)}
+                    </span>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -621,7 +687,7 @@ export default function InvoiceDetailPage({
             <CardContent className="space-y-3 text-sm">
               <div>
                 <p className="text-gray-400">Invoice Type</p>
-                {getTypeBadge(invoice.invoiceType)}
+                {getTypeBadge(invoice.invoiceType, invoice.status)}
               </div>
               <div>
                 <p className="text-gray-400">Invoice Date</p>
@@ -684,7 +750,7 @@ export default function InvoiceDetailPage({
         onSubmit={handleRecordPayment}
         isLoading={createPayment.isPending || updateInvoice.isPending}
         direction="Incoming"
-        defaultAmount={Number(invoice.netPayable || invoice.total)}
+        defaultAmount={balanceDue || Number(invoice.netPayable || invoice.total)}
         documentType="Invoice"
         documentNumber={invoice.number}
       />

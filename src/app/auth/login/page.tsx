@@ -42,7 +42,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Back to home link */}
       <div className="absolute top-6 left-6 z-10">
         <Link
@@ -58,41 +58,38 @@ export default function LoginPage() {
         {/* Left Column - Branding */}
         <div className="hidden lg:flex flex-col justify-center px-12 xl:px-20 border-r border-white/10">
           <div className="max-w-lg">
-            <h1 className="text-5xl xl:text-6xl font-logo font-bold mb-6">
-              Balance
-            </h1>
-            <p className="text-xl text-gray-400 mb-8">Track. Record. Grow.</p>
+            <h1 className="text-5xl xl:text-6xl font-logo mb-6">Balance</h1>
+            <p className="text-xl text-gray-400 mb-8">Invoicing, made simple.</p>
             <p className="text-gray-500 leading-relaxed">
-              Your complete financial management solution designed for Ethiopian
-              businesses. Manage sales invoices, payment vouchers, and purchase
-              bills with ease.
+              Create professional invoices, record payments, and handle VAT and
+              withholding tax — all in one place, built for Ethiopian businesses.
             </p>
 
             <div className="mt-12 space-y-4">
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">Sequential Numbering</h3>
+                  <h3 className="font-medium mb-1">Get paid faster</h3>
                   <p className="text-sm text-gray-500">
-                    Automatic document numbering with yearly reset
+                    See who's paid and who still owes you, at a glance
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">Tax Compliance</h3>
+                  <h3 className="font-medium mb-1">Taxes handled automatically</h3>
                   <p className="text-sm text-gray-500">
-                    Built-in VAT and withholding tax calculations
+                    VAT and withholding worked out for you on every invoice
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand-yellow-500 mt-2"></div>
                 <div>
-                  <h3 className="font-semibold mb-1">Secure & Fast</h3>
+                  <h3 className="font-medium mb-1">Everything in one place</h3>
                   <p className="text-sm text-gray-500">
-                    Bank-level security with lightning-fast performance
+                    Invoices, bills, and payments, organized and easy to find
                   </p>
                 </div>
               </div>
@@ -105,13 +102,13 @@ export default function LoginPage() {
           <div className="w-full max-w-md space-y-8">
             {/* Mobile Logo */}
             <div className="text-center lg:hidden">
-              <h1 className="text-3xl font-logo font-bold mb-2">Balance</h1>
+              <h1 className="text-3xl font-logo mb-2">Balance</h1>
               <p className="text-gray-400">Welcome back</p>
             </div>
 
             {/* Desktop Heading */}
             <div className="hidden lg:block">
-              <h2 className="text-3xl font-bold mb-2">Welcome back</h2>
+              <h2 className="text-3xl font-semibold tracking-tight mb-2">Welcome back</h2>
               <p className="text-gray-400">Sign in to your account</p>
             </div>
 
@@ -125,7 +122,7 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   placeholder="you@example.com"
-                  className="bg-black border-white/20 text-white placeholder:text-gray-500"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-gray-500"
                   {...register("email")}
                 />
                 {errors.email && (
@@ -141,7 +138,7 @@ export default function LoginPage() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  className="bg-black border-white/20 text-white placeholder:text-gray-500"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-gray-500"
                   {...register("password")}
                 />
                 {errors.password && (
@@ -154,7 +151,7 @@ export default function LoginPage() {
               <div className="flex items-center justify-between">
                 <Link
                   href="/auth/forgot-password"
-                  className="text-sm text-brand-yellow-500 hover:text-brand-yellow-600 transition-colors"
+                  className="text-sm text-gray-300 hover:text-white transition-colors"
                 >
                   Forgot password?
                 </Link>
@@ -176,13 +173,7 @@ export default function LoginPage() {
               </Button>
 
               <div className="text-center text-sm text-gray-400">
-                Don&apos;t have an account?{" "}
-                <Link
-                  href="/auth/register"
-                  className="text-brand-yellow-500 hover:text-brand-yellow-600 font-medium transition-colors"
-                >
-                  Sign up
-                </Link>
+                Public signup is currently closed.
               </div>
             </form>
           </div>

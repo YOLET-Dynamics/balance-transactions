@@ -11,6 +11,7 @@ export interface Payment {
   currency: string;
   relatedType: "Invoice" | "Bill" | "None";
   relatedId: string | null;
+  advanceReceiptNumber: string | null;
   voucherPdfId: string | null;
   createdBy: string | null;
   reviewedBy: string | null;
@@ -25,6 +26,8 @@ export interface CreatePaymentInput {
   amount: number;
   relatedType: "Invoice" | "Bill" | "None";
   relatedId?: string;
+  advanceReceiptNumber?: string;
+  fiscalReceiptNumber?: string;
   createdBy?: string;
   reviewedBy?: string;
   authorizedBy?: string;
@@ -35,17 +38,36 @@ export interface PaymentsListOptions {
   limit?: number;
   search?: string;
   direction?: "Incoming" | "Outgoing";
+  relatedType?: "Invoice" | "Bill" | "None";
+  relatedId?: string;
   year?: number;
 }
 
 export function usePayments(options: PaymentsListOptions = {}) {
-  const { page = 1, limit = 20, search, direction, year } = options;
+  const {
+    page = 1,
+    limit = 20,
+    search,
+    direction,
+    relatedType,
+    relatedId,
+    year,
+  } = options;
 
   return useQuery<{ payments: Payment[]; total: number }>({
-    queryKey: ["payments", page, limit, search, direction, year],
+    queryKey: [
+      "payments",
+      page,
+      limit,
+      search,
+      direction,
+      relatedType,
+      relatedId,
+      year,
+    ],
     queryFn: () =>
       api.get("/api/payments", {
-        params: { page, limit, search, direction, year },
+        params: { page, limit, search, direction, relatedType, relatedId, year },
       }),
     staleTime: 30 * 1000,
     retry: false,
@@ -68,6 +90,8 @@ export function useCreatePayment() {
     mutationFn: (data: CreatePaymentInput) => api.post("/api/payments", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Payment created successfully");
     },
@@ -112,4 +136,3 @@ export function useDeletePayment() {
     },
   });
 }
-

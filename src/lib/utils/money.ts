@@ -137,31 +137,66 @@ export function calculateVAT(amount: number, vatRate: number = 15): number {
   return percentageOf(amount, vatRate);
 }
 
+export type WithholdingLineType = "Good" | "Service";
+
+export interface WithholdingLine {
+  lineType: WithholdingLineType;
+  lineTotal: number;
+}
+
+export interface WithholdingResult {
+  withheldPct: number;
+  withheldAmount: number;
+  taxableBase: number;
+  goodsBase: number;
+  serviceBase: number;
+}
+
+const WITHHOLDING_RATE_PCT = 3;
+const GOODS_WITHHOLDING_THRESHOLD = 20000;
+const SERVICE_WITHHOLDING_THRESHOLD = 10000;
+
 /**
- * Calculate withholding tax
- * Rules: 
- * - Service: if amount > 20,000, withhold 3%
- * - Goods: if amount > 30,000, withhold 3%
+ * Calculate Ethiopian WHT on category subtotals before VAT.
  */
 export function calculateWithholding(
-  amount: number,
-  isCompany: boolean,
-  isService: boolean
-): { withheldPct: number; withheldAmount: number } {
-  if (!isCompany) {
-    return { withheldPct: 0, withheldAmount: 0 };
-  }
-  
-  const threshold = isService ? 20000 : 30000;
-  
-  if (amount > threshold) {
+  lines: WithholdingLine[],
+  shouldApply: boolean
+): WithholdingResult {
+  const goodsBase = roundMoney(
+    lines
+      .filter((line) => line.lineType === "Good")
+      .reduce((sum, line) => sum + line.lineTotal, 0)
+  );
+  const serviceBase = roundMoney(
+    lines
+      .filter((line) => line.lineType === "Service")
+      .reduce((sum, line) => sum + line.lineTotal, 0)
+  );
+
+  if (!shouldApply) {
     return {
-      withheldPct: 3,
-      withheldAmount: percentageOf(amount, 3),
+      withheldPct: 0,
+      withheldAmount: 0,
+      taxableBase: 0,
+      goodsBase,
+      serviceBase,
     };
   }
-  
-  return { withheldPct: 0, withheldAmount: 0 };
+
+  const taxableBase = addMoney(
+    goodsBase > GOODS_WITHHOLDING_THRESHOLD ? goodsBase : 0,
+    serviceBase > SERVICE_WITHHOLDING_THRESHOLD ? serviceBase : 0
+  );
+
+  return {
+    withheldPct: taxableBase > 0 ? WITHHOLDING_RATE_PCT : 0,
+    withheldAmount:
+      taxableBase > 0 ? percentageOf(taxableBase, WITHHOLDING_RATE_PCT) : 0,
+    taxableBase,
+    goodsBase,
+    serviceBase,
+  };
 }
 
 /**
@@ -172,4 +207,3 @@ export function parseMoney(str: string): number {
   const parsed = parseFloat(cleaned);
   return isNaN(parsed) ? 0 : roundMoney(parsed);
 }
-

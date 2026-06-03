@@ -1,6 +1,6 @@
-import { createRoute } from "@/lib/api/route-handler";
+import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
 import { requireRole } from "@/lib/middleware/auth.middleware";
-import { prisma } from "@/infrastructure/database/prisma";
+import { withTenantContext } from "@/infrastructure/database/prisma";
 import { z } from "zod";
 
 const updateOrganizationSchema = z.object({
@@ -13,42 +13,48 @@ const updateOrganizationSchema = z.object({
   vatNumber: z.string().max(50).optional(),
   phone: z.string().max(20).optional(),
   email: z.string().email().optional(),
+  isWithholdingAgent: z.boolean().optional(),
 });
 
 export const PATCH = createRoute(
   async ({ request, auth }) => {
     requireRole(auth!, "Admin");
 
-    const body = await request.json();
-    const validated = updateOrganizationSchema.parse(body);
+    const validated = getValidatedBody<z.infer<typeof updateOrganizationSchema>>(
+      request
+    );
 
-    const organization = await prisma.organization.update({
-      where: { id: auth!.orgId },
-      data: {
-        legalName: validated.legalName,
-        tradeName: validated.tradeName,
-        subcity: validated.subcity,
-        cityRegion: validated.cityRegion,
-        country: validated.country,
-        tin: validated.tin,
-        vatNumber: validated.vatNumber,
-        phone: validated.phone,
-        email: validated.email,
-      },
-      select: {
-        id: true,
-        code: true,
-        legalName: true,
-        tradeName: true,
-        subcity: true,
-        cityRegion: true,
-        country: true,
-        tin: true,
-        vatNumber: true,
-        phone: true,
-        email: true,
-        createdAt: true,
-      },
+    const organization = await withTenantContext(auth!.orgId, async (tx) => {
+      return await tx.organization.update({
+        where: { id: auth!.orgId },
+        data: {
+          legalName: validated.legalName,
+          tradeName: validated.tradeName,
+          subcity: validated.subcity,
+          cityRegion: validated.cityRegion,
+          country: validated.country,
+          tin: validated.tin,
+          vatNumber: validated.vatNumber,
+          phone: validated.phone,
+          email: validated.email,
+          isWithholdingAgent: validated.isWithholdingAgent,
+        },
+        select: {
+          id: true,
+          code: true,
+          legalName: true,
+          tradeName: true,
+          subcity: true,
+          cityRegion: true,
+          country: true,
+          tin: true,
+          vatNumber: true,
+          phone: true,
+          email: true,
+          isWithholdingAgent: true,
+          createdAt: true,
+        },
+      });
     });
 
     return { organization };
@@ -56,6 +62,6 @@ export const PATCH = createRoute(
   {
     requireAuth: true,
     rateLimit: "mutations",
+    bodySchema: updateOrganizationSchema,
   }
 );
-

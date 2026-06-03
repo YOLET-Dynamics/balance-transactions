@@ -1,16 +1,10 @@
-import { prisma } from "@/infrastructure/database/prisma";
+import { withTenantContext } from "@/infrastructure/database/prisma";
 import type {
   Vendor,
   CreateVendorData,
   IVendorsRepository,
 } from "@/domain/repositories/vendors.repository";
-
-async function withTenantContext<T>(
-  orgId: string,
-  operation: (tx: typeof prisma) => Promise<T>
-): Promise<T> {
-  return operation(prisma);
-}
+import { NotFoundError } from "@/lib/utils/errors";
 
 function serializeVendor(vendor: any): Vendor {
   if (!vendor) return vendor;
@@ -85,8 +79,8 @@ class VendorsRepositoryImpl implements IVendorsRepository {
     data: Partial<CreateVendorData>
   ): Promise<Vendor> {
     return await withTenantContext(orgId, async (tx) => {
-      const vendor = await tx.vendor.update({
-        where: { id },
+      const result = await tx.vendor.updateMany({
+        where: { id, orgId },
         data: {
           type: data.type,
           legalName: data.legalName,
@@ -103,18 +97,27 @@ class VendorsRepositoryImpl implements IVendorsRepository {
         },
       });
 
+      if (result.count === 0) {
+        throw new NotFoundError("Vendor not found");
+      }
+
+      const vendor = await tx.vendor.findFirst({
+        where: { id, orgId },
+      });
+
       return serializeVendor(vendor);
     });
   }
 
   async delete(orgId: string, id: string): Promise<void> {
     await withTenantContext(orgId, async (tx) => {
-      await tx.vendor.delete({
-        where: { id },
-      });
+      const result = await tx.vendor.deleteMany({ where: { id, orgId } });
+
+      if (result.count === 0) {
+        throw new NotFoundError("Vendor not found");
+      }
     });
   }
 }
 
 export const vendorsRepository = new VendorsRepositoryImpl();
-

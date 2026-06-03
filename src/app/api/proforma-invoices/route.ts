@@ -1,4 +1,10 @@
-import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
+import {
+  createRoute,
+  getAllowedSearchParam,
+  getPaginationParams,
+  getValidatedBody,
+  getYearSearchParam,
+} from "@/lib/api/route-handler";
 import {
   createProformaInvoiceSchema,
 } from "@/lib/validation/schemas";
@@ -33,19 +39,22 @@ export const POST = createRoute(
 export const GET = createRoute(
   async ({ request, auth }) => {
     const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get("page") || "1");
-    const limit = parseInt(url.searchParams.get("limit") || "20");
+    const { page, limit } = getPaginationParams(request);
     const search = url.searchParams.get("search") || undefined;
-    const status = url.searchParams.get("status") || undefined;
-    const year = url.searchParams.get("year")
-      ? parseInt(url.searchParams.get("year")!)
-      : undefined;
+    const status = getAllowedSearchParam(request, "status", [
+      "Draft",
+      "Pending",
+      "Paid",
+      "Overdue",
+      "Cancelled",
+    ] as const);
+    const year = getYearSearchParam(request);
 
     const result = await proformaService.listProformas(auth!.orgId, {
       page,
       limit,
       search,
-      status: status !== "all" ? status : undefined,
+      status,
       year,
     });
 
@@ -56,4 +65,3 @@ export const GET = createRoute(
     rateLimit: "queries",
   }
 );
-

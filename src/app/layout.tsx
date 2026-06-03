@@ -1,15 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Space_Grotesk } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-});
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -19,10 +13,11 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "Balance - Payment & Sales Management",
+    default: "Balance — Invoicing & payments for Ethiopian businesses",
     template: "%s · Balance",
   },
-  description: "Simple, minimal payment and sales recording application",
+  description:
+    "Create professional invoices, record payments, and handle VAT and withholding tax — all in one place. Built for Ethiopian businesses.",
   applicationName: "Balance",
 };
 
@@ -30,7 +25,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#153d59",
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({
@@ -39,13 +34,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
-      <body className={`${dmSans.className} antialiased min-h-screen bg-background`}>
+    <html
+      lang="en"
+      className={spaceGrotesk.variable}
+      suppressHydrationWarning
+    >
+      <body
+        className={`${spaceGrotesk.className} antialiased min-h-screen bg-background`}
+      >
         <QueryProvider>
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
+            defaultTheme="dark"
+            forcedTheme="dark"
+            enableSystem={false}
             disableTransitionOnChange
           >
             {children}

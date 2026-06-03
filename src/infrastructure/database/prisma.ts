@@ -23,10 +23,9 @@ export async function withTenantContext<T>(
 ): Promise<T> {
   return await prisma.$transaction(async (tx) => {
     // Set the org_id context variable for RLS
-    await tx.$executeRawUnsafe(`SET LOCAL app.org_id = '${orgId}'`);
+    await tx.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`;
     return await fn(tx as PrismaClient);
   });
 }
 
 export type { PrismaClient };
-

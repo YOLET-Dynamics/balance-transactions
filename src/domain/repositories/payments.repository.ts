@@ -8,6 +8,8 @@ export interface CreatePaymentData {
   currency?: string;
   relatedType: RelatedType;
   relatedId?: string | null;
+  advanceReceiptNumber?: string | null;
+  fiscalReceiptNumber?: string | null;
   createdBy?: string | null;
   reviewedBy?: string | null;
   authorizedBy?: string | null;
@@ -22,6 +24,7 @@ export interface Payment {
   currency: string;
   relatedType: RelatedType;
   relatedId: string | null;
+  advanceReceiptNumber: string | null;
   voucherPdfId: string | null;
   createdBy: string | null;
   reviewedBy: string | null;
@@ -35,6 +38,8 @@ export interface ListOptions {
   limit?: number;
   search?: string;
   direction?: PaymentDirection;
+  relatedType?: RelatedType;
+  relatedId?: string;
   year?: number;
 }
 
@@ -52,4 +57,9 @@ export interface IPaymentsRepository {
   ): Promise<Payment>;
   delete(orgId: string, id: string): Promise<void>;
   getRecentPayments(orgId: string, limit: number): Promise<Payment[]>;
+  sumForRelated(
+    orgId: string,
+    relatedType: RelatedType,
+    relatedId: string
+  ): Promise<number>;
 }

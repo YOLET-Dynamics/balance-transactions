@@ -5,6 +5,7 @@ import { toast } from "sonner";
 export interface BillLine {
   id?: string;
   itemId?: string | null;
+  lineType: "Good" | "Service";
   description: string;
   unit: string;
   quantity: number;
@@ -37,6 +38,7 @@ export interface PurchaseBill {
 
   withheldPct: number | null;
   withheldAmount: number | null;
+  withholdingOverrideReason: string | null;
   netPaid: number;
 
   reason: string;

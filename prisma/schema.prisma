@@ -30,6 +30,7 @@ model Organization {
   website   String?
 
   defaultCurrency String @default("ETB") @map("default_currency")
+  isWithholdingAgent Boolean @default(false) @map("is_withholding_agent")
 
   createdBy String?  @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
@@ -369,6 +370,7 @@ model SalesInvoiceLine {
   quantity        Decimal @db.Decimal(19, 4)
   unitPrice       Decimal @map("unit_price") @db.Decimal(19, 2)
   lineTotal       Decimal @map("line_total") @db.Decimal(19, 2)
+  lineType        ItemType @default(Good) @map("line_type")
   isVatApplicable Boolean @default(true) @map("is_vat_applicable")
 
   invoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -424,6 +426,7 @@ model PurchaseBill {
 
   withheldPct    Decimal? @map("withheld_pct") @db.Decimal(5, 2)
   withheldAmount Decimal? @map("withheld_amount") @db.Decimal(19, 2)
+  withholdingOverrideReason String? @map("withholding_override_reason") @db.Text
   netPaid        Decimal  @map("net_paid") @db.Decimal(19, 2)
 
   reason        String        @db.Text
@@ -462,6 +465,7 @@ model PurchaseBillLine {
   unitPrice       Decimal @map("unit_price") @db.Decimal(19, 2)
   discountAmount  Decimal @default(0) @map("discount_amount") @db.Decimal(19, 2)
   lineTotal       Decimal @map("line_total") @db.Decimal(19, 2)
+  lineType        ItemType @default(Good) @map("line_type")
   isVatApplicable Boolean @default(true) @map("is_vat_applicable")
 
   bill PurchaseBill @relation(fields: [billId], references: [id], onDelete: Cascade)
@@ -496,6 +500,7 @@ model Payment {
 
   relatedType RelatedType @map("related_type")
   relatedId   String?     @map("related_id") @db.Uuid
+  advanceReceiptNumber String? @map("advance_receipt_number")
 
   voucherPdfId String? @map("voucher_pdf_id") @db.Uuid
 
@@ -510,6 +515,7 @@ model Payment {
   voucherPdf   Attachment?  @relation("PaymentVoucher", fields: [voucherPdfId], references: [id])
 
   @@index([orgId])
+  @@index([orgId, relatedType, relatedId])
   @@map("payments")
 }
 

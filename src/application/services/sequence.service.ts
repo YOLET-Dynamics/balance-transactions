@@ -1,7 +1,4 @@
-import {
-  prisma,
-  withTenantContext,
-} from "../../infrastructure/database/prisma";
+import { withTenantContext } from "../../infrastructure/database/prisma";
 import type { DocType } from "@prisma/client";
 
 export interface DocumentNumber {
@@ -73,17 +70,19 @@ export class SequenceService {
   ): Promise<number> {
     const targetYear = year || new Date().getFullYear();
 
-    const sequence = await prisma.numberSequence.findUnique({
-      where: {
-        orgId_docType_year: {
-          orgId,
-          docType,
-          year: targetYear,
+    return await withTenantContext(orgId, async (tx) => {
+      const sequence = await tx.numberSequence.findUnique({
+        where: {
+          orgId_docType_year: {
+            orgId,
+            docType,
+            year: targetYear,
+          },
         },
-      },
-    });
+      });
 
-    return sequence?.nextValue || 1;
+      return sequence?.nextValue || 1;
+    });
   }
 }
 

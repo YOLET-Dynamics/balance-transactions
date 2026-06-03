@@ -25,12 +25,49 @@ interface CustomersResponse {
   customers: Customer[];
 }
 
+export interface CustomerLedgerEntry {
+  id: string;
+  type: "invoice" | "payment";
+  date: string;
+  documentNumber: string;
+  label: string;
+  amount: number;
+  paid: number;
+  balance: number;
+  status: string;
+  href: string;
+  dueDate: string | null;
+}
+
+export interface CustomerLedger {
+  customer: Customer;
+  summary: {
+    totalInvoiced: number;
+    totalPaid: number;
+    outstanding: number;
+    overdue: number;
+    invoiceCount: number;
+    paymentCount: number;
+  };
+  entries: CustomerLedgerEntry[];
+}
+
 export function useCustomers(search: string = "") {
   return useQuery({
     queryKey: ["customers", search],
     queryFn: () =>
       api.get<CustomersResponse>(`/api/customers?search=${encodeURIComponent(search)}`),
     staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+export function useCustomerLedger(id?: string) {
+  return useQuery<CustomerLedger>({
+    queryKey: ["customer-ledger", id],
+    queryFn: () => api.get(`/api/customers/${id}`),
+    enabled: !!id,
+    staleTime: 30 * 1000,
+    retry: false,
   });
 }
 
@@ -50,4 +87,3 @@ export function useCreateCustomer() {
     },
   });
 }
-

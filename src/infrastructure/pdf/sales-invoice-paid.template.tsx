@@ -210,6 +210,26 @@ const styles = StyleSheet.create({
     color: "#78350f",
     lineHeight: 1.3,
   },
+  notesSection: {
+    marginTop: 8,
+    padding: 6,
+    backgroundColor: "#f9fafb",
+    borderLeft: "2 solid #d1d5db",
+    borderRadius: 2,
+  },
+  notesTitle: {
+    fontSize: 6,
+    fontFamily: "Courier-Bold",
+    color: "#6b7280",
+    marginBottom: 3,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  notesText: {
+    fontSize: 7,
+    color: "#374151",
+    lineHeight: 1.3,
+  },
   footer: {
     position: "absolute",
     bottom: 12,
@@ -458,6 +478,13 @@ export const SalesInvoicePaidPDF: React.FC<SalesInvoicePaidPDFProps> = ({
               ` Fiscal Receipt Number: ${invoice.fiscalReceiptNumber}`}
           </Text>
         </View>
+
+        {invoice.notes && (
+          <View style={styles.notesSection}>
+            <Text style={styles.notesTitle}>Note</Text>
+            <Text style={styles.notesText}>{invoice.notes}</Text>
+          </View>
+        )}
 
         <View style={styles.footer}>
           <View style={styles.footerBranding}>

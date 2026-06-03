@@ -19,6 +19,7 @@ type GoodsOrService = "Goods" | "Service";
 type PartyType = "Company" | "Individual";
 type ProformaStatus = "Draft" | "Pending" | "Cancelled";
 type InvoiceType = "Cash" | "Credit";
+type ItemType = "Good" | "Service";
 
 interface CreateProformaInput {
   buyerType?: PartyType;
@@ -45,6 +46,7 @@ interface CreateProformaInput {
 
   lines: Array<{
     itemId?: string;
+    lineType?: ItemType;
     description: string;
     unit: string;
     quantity: number;
@@ -70,8 +72,11 @@ export class ProformaService {
   ): Promise<SalesInvoice> {
     const docNumber = await sequenceService.allocateNext(orgId, orgCode, "PI");
 
+    const defaultLineType: ItemType =
+      input.goodsOrService === "Service" ? "Service" : "Good";
     const lines = input.lines.map((line) => ({
       ...line,
+      lineType: line.lineType || defaultLineType,
       lineTotal: roundMoney(line.quantity * line.unitPrice),
     }));
 
@@ -87,12 +92,10 @@ export class ProformaService {
 
     const total = addMoney(subtotal, vatAmount);
 
-    const isCompany = input.buyerType === "Company";
-    const isService = input.goodsOrService === "Service";
-    const shouldApplyWithholding = input.applyWithholding && isCompany && isService;
-    const { withheldPct, withheldAmount } = shouldApplyWithholding
-      ? calculateWithholding(subtotal, isCompany, isService)
-      : { withheldPct: 0, withheldAmount: 0 };
+    const { withheldPct, withheldAmount } = calculateWithholding(
+      lines,
+      !!input.applyWithholding
+    );
 
     const netPayable = subtractMoney(total, withheldAmount);
 
@@ -182,4 +185,3 @@ export class ProformaService {
 
 import { salesRepository } from "../../infrastructure/repositories/sales.repository.impl";
 export const proformaService = new ProformaService(salesRepository);
-

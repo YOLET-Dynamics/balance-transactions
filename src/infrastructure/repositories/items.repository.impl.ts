@@ -1,17 +1,11 @@
-import { prisma } from "@/infrastructure/database/prisma";
+import { withTenantContext } from "@/infrastructure/database/prisma";
 import type {
   Item,
   CreateItemData,
   ListItemsOptions,
   IItemsRepository,
 } from "@/domain/repositories/items.repository";
-
-async function withTenantContext<T>(
-  orgId: string,
-  operation: (tx: typeof prisma) => Promise<T>
-): Promise<T> {
-  return operation(prisma);
-}
+import { NotFoundError } from "@/lib/utils/errors";
 
 function serializeItem(item: any): Item {
   if (!item) return item;
@@ -116,8 +110,8 @@ class ItemsRepositoryImpl implements IItemsRepository {
     data: Partial<CreateItemData>
   ): Promise<Item> {
     return await withTenantContext(orgId, async (tx) => {
-      const item = await tx.item.update({
-        where: { id },
+      const result = await tx.item.updateMany({
+        where: { id, orgId },
         data: {
           type: data.type as any,
           code: data.code,
@@ -132,18 +126,27 @@ class ItemsRepositoryImpl implements IItemsRepository {
         },
       });
 
+      if (result.count === 0) {
+        throw new NotFoundError("Item not found");
+      }
+
+      const item = await tx.item.findFirst({
+        where: { id, orgId },
+      });
+
       return serializeItem(item);
     });
   }
 
   async delete(orgId: string, id: string): Promise<void> {
     await withTenantContext(orgId, async (tx) => {
-      await tx.item.delete({
-        where: { id },
-      });
+      const result = await tx.item.deleteMany({ where: { id, orgId } });
+
+      if (result.count === 0) {
+        throw new NotFoundError("Item not found");
+      }
     });
   }
 }
 
 export const itemsRepository = new ItemsRepositoryImpl();
-

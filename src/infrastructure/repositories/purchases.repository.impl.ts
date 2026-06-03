@@ -1,17 +1,11 @@
-import { prisma } from "@/infrastructure/database/prisma";
+import { withTenantContext } from "@/infrastructure/database/prisma";
 import {
   IPurchasesRepository,
   CreatePurchaseBillData,
   PurchaseBill,
   ListOptions,
 } from "@/domain/repositories/purchases.repository";
-
-async function withTenantContext<T>(
-  orgId: string,
-  callback: (tx: typeof prisma) => Promise<T>
-): Promise<T> {
-  return callback(prisma);
-}
+import { NotFoundError } from "@/lib/utils/errors";
 
 function serializeBill(bill: any): any {
   if (!bill) return null;
@@ -33,8 +27,15 @@ function serializeBill(bill: any): any {
         unitPrice: line.unitPrice ? Number(line.unitPrice) : 0,
         discountAmount: line.discountAmount ? Number(line.discountAmount) : 0,
         lineTotal: line.lineTotal ? Number(line.lineTotal) : 0,
+        lineType: line.lineType || "Good",
       })) || [],
   };
+}
+
+function stripUndefined<T extends Record<string, unknown>>(data: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(data).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
 }
 
 class PurchasesRepositoryImpl implements IPurchasesRepository {
@@ -88,6 +89,7 @@ class PurchasesRepositoryImpl implements IPurchasesRepository {
               unitPrice: line.unitPrice,
               discountAmount: line.discountAmount || 0,
               lineTotal: line.lineTotal,
+              lineType: line.lineType,
               isVatApplicable: line.isVatApplicable,
             })),
           },
@@ -103,8 +105,8 @@ class PurchasesRepositoryImpl implements IPurchasesRepository {
 
   async findById(orgId: string, id: string): Promise<PurchaseBill | null> {
     return await withTenantContext(orgId, async (tx) => {
-      const bill = await tx.purchaseBill.findUnique({
-        where: { id },
+      const bill = await tx.purchaseBill.findFirst({
+        where: { id, orgId },
         include: {
           lines: true,
         },
@@ -161,9 +163,6 @@ class PurchasesRepositoryImpl implements IPurchasesRepository {
       const [bills, total] = await Promise.all([
         tx.purchaseBill.findMany({
           where,
-          include: {
-            lines: true,
-          },
           orderBy: { createdAt: "desc" },
           skip:
             options.page && options.limit
@@ -187,12 +186,62 @@ class PurchasesRepositoryImpl implements IPurchasesRepository {
     data: Partial<CreatePurchaseBillData>
   ): Promise<PurchaseBill> {
     return await withTenantContext(orgId, async (tx) => {
-      const updateData: any = { ...data };
-      delete updateData.lines; // Handle lines separately if needed
+      const updateData = stripUndefined({
+        vendorLegalName: data.vendorLegalName,
+        vendorTradeName: data.vendorTradeName,
+        vendorSubcity: data.vendorSubcity,
+        vendorCityRegion: data.vendorCityRegion,
+        vendorCountry: data.vendorCountry,
+        vendorTin: data.vendorTin,
+        vendorVatNumber: data.vendorVatNumber,
+        vendorPhone: data.vendorPhone,
+        currency: data.currency,
+        subtotal: data.subtotal,
+        vatAmount: data.vatAmount,
+        total: data.total,
+        withheldPct: data.withheldPct,
+        withheldAmount: data.withheldAmount,
+        withholdingOverrideReason: data.withholdingOverrideReason,
+        netPaid: data.netPaid,
+        reason: data.reason,
+        paymentMethod: data.paymentMethod,
+        paymentRef: data.paymentRef,
+        status: data.status,
+        createdBy: data.createdBy,
+        reviewedBy: data.reviewedBy,
+        authorizedBy: data.authorizedBy,
+      });
 
-      const bill = await tx.purchaseBill.update({
-        where: { id },
-        data: updateData,
+      const result = await tx.purchaseBill.updateMany({
+        where: { id, orgId },
+        data: updateData as any,
+      });
+
+      if (result.count === 0) {
+        throw new NotFoundError("Purchase bill not found");
+      }
+
+      if (data.lines) {
+        await tx.purchaseBillLine.deleteMany({ where: { billId: id } });
+        await tx.purchaseBillLine.createMany({
+          data: data.lines.map((line, index) => ({
+            billId: id,
+            seq: index + 1,
+            itemId: line.itemId,
+            description: line.description,
+            unit: line.unit,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            discountAmount: line.discountAmount || 0,
+            lineTotal: line.lineTotal,
+            lineType: line.lineType,
+            isVatApplicable: line.isVatApplicable,
+          })),
+        });
+      }
+
+      const bill = await tx.purchaseBill.findFirst({
+        where: { id, orgId },
         include: {
           lines: true,
         },
@@ -203,7 +252,7 @@ class PurchasesRepositoryImpl implements IPurchasesRepository {
 
   async delete(orgId: string, id: string): Promise<void> {
     await withTenantContext(orgId, async (tx) => {
-      await tx.purchaseBill.delete({ where: { id } });
+      await tx.purchaseBill.deleteMany({ where: { id, orgId } });
     });
   }
 
@@ -213,8 +262,8 @@ class PurchasesRepositoryImpl implements IPurchasesRepository {
     attachmentId: string
   ): Promise<void> {
     await withTenantContext(orgId, async (tx) => {
-      await tx.purchaseBill.update({
-        where: { id },
+      await tx.purchaseBill.updateMany({
+        where: { id, orgId },
         data: { pdfAttachmentId: attachmentId },
       });
     });
@@ -226,9 +275,6 @@ class PurchasesRepositoryImpl implements IPurchasesRepository {
         where: { orgId },
         orderBy: { createdAt: "desc" },
         take: limit,
-        include: {
-          lines: true,
-        },
       });
       return bills.map(serializeBill);
     });

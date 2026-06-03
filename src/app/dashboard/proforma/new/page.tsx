@@ -57,8 +57,8 @@ export default function NewProformaPage() {
         onSaveDraft={handleSaveDraft}
         isLoading={createProforma.isPending}
         mode="create"
+        documentKind="proforma"
       />
     </div>
   );
 }
-

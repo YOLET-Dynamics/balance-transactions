@@ -1,6 +1,7 @@
-import { createRoute } from "@/lib/api/route-handler";
+import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
 import { proformaService } from "@/application/services/proforma.service";
 import { requireRole } from "@/lib/middleware/auth.middleware";
+import { updateProformaInvoiceSchema } from "@/lib/validation/schemas";
 
 export const GET = createRoute(
   async ({ params, auth }) => {
@@ -17,7 +18,8 @@ export const PATCH = createRoute(
   async ({ params, auth, request }) => {
     requireRole(auth!, "Manager");
 
-    const body = await request.json();
+    const body =
+      getValidatedBody<typeof updateProformaInvoiceSchema._type>(request);
 
     const proforma = await proformaService.updateProforma(
       auth!.orgId,
@@ -30,6 +32,7 @@ export const PATCH = createRoute(
   {
     requireAuth: true,
     rateLimit: "mutations",
+    bodySchema: updateProformaInvoiceSchema,
   }
 );
 
@@ -46,4 +49,3 @@ export const DELETE = createRoute(
     rateLimit: "mutations",
   }
 );
-

@@ -1,385 +1,341 @@
-"use client";
-
 import Link from "next/link";
 import {
   ArrowRight,
-  FileText,
   Receipt,
+  Wallet,
   TrendingUp,
-  BarChart3,
-  Shield,
-  Zap,
-  Check,
+  Calculator,
   Package,
+  Sprout,
+  Check,
 } from "lucide-react";
 
+const features = [
+  {
+    icon: Receipt,
+    title: "Get paid faster",
+    description:
+      "Send invoices in minutes and always know what's been paid and what's still owed.",
+  },
+  {
+    icon: Wallet,
+    title: "Stay on top of payments",
+    description:
+      "Record every payment against the right invoice, with vouchers handled for you.",
+  },
+  {
+    icon: Calculator,
+    title: "Tax, handled for you",
+    description:
+      "VAT and withholding tax are worked out on every document, so the numbers are always right.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Know where you stand",
+    description:
+      "See money coming in and going out at a glance, so there are no surprises.",
+  },
+  {
+    icon: Package,
+    title: "Save time on every invoice",
+    description:
+      "Save your products and prices once, then reuse them with a single click.",
+  },
+  {
+    icon: Sprout,
+    title: "Built to grow with you",
+    description:
+      "Tidy, organized records today — with room for full accounting as your business grows.",
+  },
+];
+
+const benefits = [
+  {
+    title: "No more forgotten invoices",
+    description: "Always know which invoices are paid and which are still owed.",
+  },
+  {
+    title: "No more tax-time surprises",
+    description: "VAT and withholding tax are applied correctly, every time.",
+  },
+  {
+    title: "No more scattered records",
+    description: "Every invoice, bill, and payment lives in one searchable place.",
+  },
+  {
+    title: "No more repetitive typing",
+    description: "Save products and customers once, then reuse them anywhere.",
+  },
+];
+
 export default function Home() {
+  const year = new Date().getFullYear();
+
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white">
+    <div className="flex min-h-screen flex-col bg-[#0a0a0a] text-white">
       {/* Header */}
-      <header className="border-b border-white/10 backdrop-blur-sm sticky top-0 z-50 bg-black/80">
-        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-logo tracking-tight text-white font-bold">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/70 backdrop-blur-xl">
+        <div className="container mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
+          <span className="font-logo text-xl tracking-tight text-white">
             Balance
-          </h1>
-          <div className="flex gap-2 sm:gap-4 items-center">
+          </span>
+          <div className="flex items-center gap-1 sm:gap-3">
             <Link
               href="/auth/login"
-              className="text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              className="rounded-full px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:text-white"
             >
-              Sign In
+              Open app
             </Link>
             <Link
-              href="/auth/register"
-              className="px-4 sm:px-6 py-2 text-sm font-semibold bg-brand-yellow-500 text-black rounded-lg hover:bg-brand-yellow-600 transition-all"
+              href="/auth/login"
+              className="rounded-full bg-brand-yellow-500 px-5 py-2 text-sm font-semibold text-black transition-colors hover:bg-brand-yellow-600"
             >
-              Get Started
+              Sign in
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
       <main className="flex-1">
-        <section className="container mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-16 md:pb-24">
-          <div className="max-w-4xl mx-auto text-center space-y-6 sm:space-y-8">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-brand-yellow-500/10 border border-brand-yellow-500/20">
-              <div className="h-2 w-2 rounded-full bg-brand-yellow-500 animate-pulse" />
-              <span className="text-xs sm:text-sm font-medium text-gray-300">
-                Financial Management for Ethiopian Businesses
-              </span>
-            </div>
-
-            {/* Headline */}
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1]">
-              <span className="text-white">Simple</span>
-              <br />
-              <span className="text-brand-yellow-500">Accounting</span>
-            </h1>
-
-            {/* Subheadline */}
-            <p className="text-lg sm:text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed px-4">
-              Stop juggling spreadsheets. Get paid faster. Stay organized.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <Link
-                href="/auth/register"
-                className="w-full sm:w-auto h-12 px-8 bg-brand-yellow-500 text-black rounded-lg hover:bg-brand-yellow-600 transition-all font-semibold inline-flex items-center justify-center gap-2 shadow-lg shadow-brand-yellow-500/20"
-              >
-                Start Free <ArrowRight className="h-5 w-5" />
-              </Link>
-              <Link
-                href="/auth/login"
-                className="w-full sm:w-auto h-12 px-8 border border-white/20 text-white rounded-lg hover:bg-white/5 transition-all font-medium inline-flex items-center justify-center"
-              >
-                Sign In
-              </Link>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 sm:gap-8 max-w-2xl mx-auto pt-8 sm:pt-12 border-t border-white/10">
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                  2min
-                </div>
-                <div className="text-xs sm:text-sm text-gray-500">
-                  Create Invoice
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-brand-yellow-500 mb-1">
-                  0
-                </div>
-                <div className="text-xs sm:text-sm text-gray-500">
-                  Math Errors
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                  100%
-                </div>
-                <div className="text-xs sm:text-sm text-gray-500">
-                  Organized
-                </div>
-              </div>
-            </div>
+        {/* Hero */}
+        <section className="relative overflow-hidden">
+          {/* Premium background: faint brand glow + masked dot grid */}
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.06)_1px,transparent_0)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_75%_60%_at_50%_0%,#000_30%,transparent_75%)]" />
+            <div className="absolute left-1/2 top-[-12rem] h-[30rem] w-[46rem] -translate-x-1/2 rounded-full bg-brand-yellow-500/[0.07] blur-[130px]" />
           </div>
-        </section>
 
-        {/* Features Grid */}
-        <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-24">
-          <div className="max-w-6xl mx-auto">
-            {/* Section Header */}
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">
-                Solve Real Problems
-              </h2>
-              <p className="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto px-4">
-                Built to save you time and eliminate headaches
+          <div className="container relative mx-auto px-4 pb-16 pt-24 text-center sm:px-6 sm:pt-32">
+            <div className="mx-auto max-w-3xl space-y-7">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 backdrop-blur-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-yellow-500" />
+                <span className="text-sm font-medium text-gray-300">
+                  Finance software for Ethiopian businesses
+                </span>
+              </div>
+
+              <h1 className="text-balance bg-gradient-to-b from-white via-white to-white/55 bg-clip-text text-5xl font-semibold leading-[1.04] tracking-[-0.03em] text-transparent sm:text-6xl md:text-7xl">
+                Run your business,
+                <br className="hidden sm:block" /> not your spreadsheets.
+              </h1>
+
+              <p className="mx-auto max-w-xl text-balance text-lg leading-relaxed text-gray-400 sm:text-xl">
+                Send invoices, track payments, and stay on top of tax — all in
+                one simple place that grows with your business.
               </p>
-            </div>
 
-            {/* Features */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Get Paid Faster */}
-              <div className="group p-6 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-brand-yellow-500/30 transition-all">
-                <div className="h-12 w-12 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center mb-4 group-hover:bg-brand-yellow-500/20 transition-colors">
-                  <Receipt className="h-6 w-6 text-brand-yellow-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">
-                  Get Paid Faster
-                </h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  Create professional invoices in minutes. Track payment status
-                  and follow up automatically
-                </p>
-              </div>
-
-              {/* Never Miss an Expense */}
-              <div className="group p-6 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-brand-yellow-500/30 transition-all">
-                <div className="h-12 w-12 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center mb-4 group-hover:bg-brand-yellow-500/20 transition-colors">
-                  <FileText className="h-6 w-6 text-brand-yellow-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">
-                  Never Miss an Expense
-                </h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  Record every vendor bill. Know exactly what you owe and when
-                  it's due
-                </p>
-              </div>
-
-              {/* Know Your Cash Flow */}
-              <div className="group p-6 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-brand-yellow-500/30 transition-all">
-                <div className="h-12 w-12 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center mb-4 group-hover:bg-brand-yellow-500/20 transition-colors">
-                  <TrendingUp className="h-6 w-6 text-brand-yellow-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">
-                  Know Your Cash Flow
-                </h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  See incoming and outgoing money at a glance. Make smarter
-                  financial decisions
-                </p>
-              </div>
-
-              {/* Save Hours Every Week */}
-              <div className="group p-6 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-brand-yellow-500/30 transition-all">
-                <div className="h-12 w-12 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center mb-4 group-hover:bg-brand-yellow-500/20 transition-colors">
-                  <Package className="h-6 w-6 text-brand-yellow-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">
-                  Save Hours Every Week
-                </h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  Stop retyping products and prices. Quick-add your commonly
-                  sold items and services
-                </p>
-              </div>
-
-              {/* Tax Season Made Easy */}
-              <div className="group p-6 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-brand-yellow-500/30 transition-all">
-                <div className="h-12 w-12 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center mb-4 group-hover:bg-brand-yellow-500/20 transition-colors">
-                  <BarChart3 className="h-6 w-6 text-brand-yellow-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">
-                  Tax Season Made Easy
-                </h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  Automatic VAT and withholding tax calculations. All your
-                  records in one organized place
-                </p>
-              </div>
-
-              {/* Look Professional */}
-              <div className="group p-6 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-brand-yellow-500/30 transition-all">
-                <div className="h-12 w-12 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center mb-4 group-hover:bg-brand-yellow-500/20 transition-colors">
-                  <Shield className="h-6 w-6 text-brand-yellow-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">
-                  Look Professional
-                </h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  Clean, branded documents that make your business look
-                  trustworthy and established
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Benefits Section */}
-        <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-24 border-t border-white/10">
-          <div className="max-w-5xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
-              {/* Left - Benefits List */}
-              <div className="space-y-4 sm:space-y-6">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                  Stop Losing Money to Disorganization
-                </h2>
-                <p className="text-base sm:text-lg text-gray-400">
-                  Unpaid invoices, missed expenses, and tax headaches cost you
-                  real money. Balance keeps everything organized
-                </p>
-
-                <div className="space-y-4 pt-4">
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-brand-yellow-500/20 flex items-center justify-center mt-0.5">
-                      <Check className="h-4 w-4 text-brand-yellow-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white mb-1">
-                        No More Forgotten Invoices
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        Track which invoices are paid and which are outstanding
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-brand-yellow-500/20 flex items-center justify-center mt-0.5">
-                      <Check className="h-4 w-4 text-brand-yellow-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white mb-1">
-                        No More Tax Calculation Errors
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        Automatic VAT and withholding tax—always correct
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-brand-yellow-500/20 flex items-center justify-center mt-0.5">
-                      <Check className="h-4 w-4 text-brand-yellow-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white mb-1">
-                        No More Scattered Records
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        All your financial documents in one searchable place
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-brand-yellow-500/20 flex items-center justify-center mt-0.5">
-                      <Check className="h-4 w-4 text-brand-yellow-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white mb-1">
-                        No More Manual Data Entry
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        Save products once, reuse them forever
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right - Highlight Card */}
-              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent p-8 space-y-6">
-                <div className="inline-flex h-16 w-16 rounded-xl bg-brand-yellow-500/10 items-center justify-center">
-                  <Zap className="h-8 w-8 text-brand-yellow-500" />
-                </div>
-
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-3">
-                    Start in Minutes
-                  </h3>
-                  <p className="text-gray-400 leading-relaxed">
-                    No complicated setup. No long forms. Create your
-                    organization, add your first invoice, and you're done.
-                  </p>
-                </div>
-
-                <div className="pt-4 space-y-3">
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="h-8 w-8 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center font-bold text-brand-yellow-500">
-                      1
-                    </div>
-                    <span className="text-gray-300">
-                      Create your organization
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="h-8 w-8 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center font-bold text-brand-yellow-500">
-                      2
-                    </div>
-                    <span className="text-gray-300">
-                      Add products or services
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="h-8 w-8 rounded-lg bg-brand-yellow-500/10 flex items-center justify-center font-bold text-brand-yellow-500">
-                      3
-                    </div>
-                    <span className="text-gray-300">
-                      Create your first invoice
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-24 border-t border-white/10">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="rounded-2xl bg-gradient-to-br from-brand-yellow-500/10 via-transparent to-transparent border border-brand-yellow-500/20 p-8 sm:p-12 md:p-16 space-y-4 sm:space-y-6">
-              <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white">
-                Ready to get started?
-              </h2>
-              <p className="text-base sm:text-lg text-gray-400 max-w-xl mx-auto px-4">
-                Join businesses across Ethiopia using Balance to streamline
-                their financial operations
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+              <div className="flex flex-col items-center justify-center gap-3 pt-3 sm:flex-row">
                 <Link
-                  href="/auth/register"
-                  className="inline-flex items-center justify-center gap-2 h-12 px-8 bg-brand-yellow-500 text-black rounded-lg hover:bg-brand-yellow-600 transition-all font-semibold shadow-lg shadow-brand-yellow-500/20"
+                  href="/auth/login"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-yellow-500 px-7 font-semibold text-black transition-colors hover:bg-brand-yellow-600 sm:w-auto"
                 >
-                  Create an Account <ArrowRight className="h-5 w-5" />
+                  Open app <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/auth/login"
+                  className="inline-flex h-12 w-full items-center justify-center rounded-full border border-white/15 px-7 font-medium text-white transition-colors hover:bg-white/5 sm:w-auto"
+                >
+                  Sign in
                 </Link>
               </div>
+            </div>
+
+            {/* Product preview */}
+            <div className="relative mx-auto mt-20 max-w-3xl">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] shadow-2xl shadow-black/50 ring-1 ring-white/5">
+                <div className="flex items-center gap-1.5 border-b border-white/10 px-4 py-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+                </div>
+                <div className="space-y-5 p-5 text-left sm:p-8">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-logo text-lg text-white">Balance</p>
+                      <p className="text-sm text-gray-500">
+                        Invoice INV-2026-0142
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
+                      <Check className="h-3 w-3" /> Paid
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 border-t border-white/10 pt-5">
+                    {[
+                      { name: "Consulting services", amount: "12,000.00" },
+                      { name: "Implementation", amount: "8,500.00" },
+                    ].map((row) => (
+                      <div
+                        key={row.name}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="text-gray-300">{row.name}</span>
+                        <span className="tabular-nums text-gray-400">
+                          ETB {row.amount}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2 border-t border-white/10 pt-5 text-sm">
+                    <div className="flex items-center justify-between text-gray-400">
+                      <span>VAT (15%)</span>
+                      <span className="tabular-nums">ETB 3,075.00</span>
+                    </div>
+                    <div className="flex items-center justify-between text-gray-400">
+                      <span>Withholding (2%)</span>
+                      <span className="tabular-nums">− ETB 410.00</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 text-base font-semibold text-white">
+                      <span>Total due</span>
+                      <span className="tabular-nums">ETB 23,165.00</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="container mx-auto px-4 py-20 sm:px-6 sm:py-28">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Everything you need, in one place
+            </h2>
+            <p className="mt-4 text-lg text-gray-400">
+              From your first invoice to your busiest month, Balance keeps the
+              numbers tidy.
+            </p>
+          </div>
+
+          <div className="mx-auto mt-14 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={feature.title}
+                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:bg-white/[0.05]"
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.06]">
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="mt-5 text-base font-semibold text-white">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-gray-400">
+                    {feature.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Benefits */}
+        <section className="container mx-auto border-t border-white/10 px-4 py-20 sm:px-6 sm:py-28">
+          <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-2">
+            <div className="space-y-6">
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                Stop losing money to disorganization
+              </h2>
+              <p className="text-lg leading-relaxed text-gray-400">
+                Unpaid invoices, missed bills, and tax mistakes quietly cost you
+                money. Balance keeps everything in one calm, organized place.
+              </p>
+              <div className="space-y-5 pt-2">
+                {benefits.map((benefit) => (
+                  <div key={benefit.title} className="flex gap-3.5">
+                    <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+                      <Check className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-white">{benefit.title}</h3>
+                      <p className="mt-1 text-sm text-gray-400">
+                        {benefit.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+              <h3 className="text-xl font-semibold text-white">
+                Up and running in minutes
+              </h3>
+              <p className="mt-2 leading-relaxed text-gray-400">
+                No complicated setup and no long forms. Create your
+                organization, add a product, and send your first invoice.
+              </p>
+              <div className="mt-8 space-y-3">
+                {[
+                  "Create your organization",
+                  "Add products or services",
+                  "Send your first invoice",
+                ].map((step, i) => (
+                  <div key={step} className="flex items-center gap-3 text-sm">
+                    <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-xs font-semibold text-white">
+                      {i + 1}
+                    </span>
+                    <span className="text-gray-300">{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="container mx-auto px-4 pb-24 sm:px-6">
+          <div className="relative mx-auto max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] px-6 py-16 text-center sm:px-12">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-0 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-brand-yellow-500/[0.06] blur-[110px]"
+            />
+            <div className="relative">
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                Ready to get started?
+              </h2>
+              <p className="mx-auto mt-4 max-w-md text-lg text-gray-400">
+                Built for Ethiopian businesses, from solo founders to growing
+                teams.
+              </p>
+              <Link
+                href="/auth/login"
+                className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand-yellow-500 px-7 font-semibold text-black transition-colors hover:bg-brand-yellow-600"
+              >
+                Open app <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-6 sm:py-8 bg-black">
+      <footer className="border-t border-white/10 py-8">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
-            <div className="flex flex-col items-center md:items-start gap-1">
-              <p className="text-sm font-logo font-bold text-white">Balance</p>
-              <p className="text-xs text-gray-600">
-                © 2025 • Powered by{" "}
-                <span className="font-semibold text-brand-yellow-500">
-                  YOLET Labs
-                </span>
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <div className="flex flex-col items-center gap-1 md:items-start">
+              <span className="font-logo text-sm text-white">Balance</span>
+              <p className="text-xs text-gray-500">
+                © {year} · Powered by{" "}
+                <span className="font-medium text-gray-300">YOLET Labs</span>
               </p>
             </div>
             <div className="flex gap-6">
               <Link
                 href="/auth/login"
-                className="text-sm text-gray-500 hover:text-white transition-colors"
+                className="text-sm text-gray-500 transition-colors hover:text-white"
               >
-                Sign In
+                Open app
               </Link>
               <Link
-                href="/auth/register"
-                className="text-sm text-gray-500 hover:text-white transition-colors"
+                href="/auth/login"
+                className="text-sm text-gray-500 transition-colors hover:text-white"
               >
-                Get Started
+                Sign in
               </Link>
             </div>
           </div>

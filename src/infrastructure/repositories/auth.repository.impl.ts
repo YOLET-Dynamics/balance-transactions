@@ -22,6 +22,42 @@ export class AuthRepository implements IAuthRepository {
     return await prisma.user.create({ data });
   }
 
+  async createRegistration(
+    userData: CreateUserData,
+    orgData: CreateOrgData,
+    verificationTokenHash: string,
+    verificationTokenExpiresAt: Date
+  ): Promise<{ user: User; organization: Organization }> {
+    return await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({ data: userData });
+      const organization = await tx.organization.create({
+        data: {
+          ...orgData,
+          createdBy: user.id,
+        },
+      });
+
+      await tx.membership.create({
+        data: {
+          userId: user.id,
+          orgId: organization.id,
+          role: "Owner",
+          acceptedAt: new Date(),
+        },
+      });
+
+      await tx.emailVerificationToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: verificationTokenHash,
+          expiresAt: verificationTokenExpiresAt,
+        },
+      });
+
+      return { user, organization };
+    });
+  }
+
   async updateUser(id: string, data: Partial<CreateUserData>): Promise<User> {
     return await prisma.user.update({ where: { id }, data });
   }
@@ -64,7 +100,7 @@ export class AuthRepository implements IAuthRepository {
       data: {
         userId,
         orgId,
-        role: role as any,
+        role: role as "Owner" | "Admin" | "Manager" | "Staff" | "Viewer",
         acceptedAt: new Date(),
       },
     });
@@ -126,8 +162,15 @@ export class AuthRepository implements IAuthRepository {
     tokenHash: string,
     expiresAt: Date
   ): Promise<void> {
-    await prisma.emailVerificationToken.create({
-      data: { userId, tokenHash, expiresAt },
+    await prisma.$transaction(async (tx) => {
+      await tx.emailVerificationToken.updateMany({
+        where: { userId, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+
+      await tx.emailVerificationToken.create({
+        data: { userId, tokenHash, expiresAt },
+      });
     });
   }
 
@@ -147,13 +190,49 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
+  async consumeEmailVerificationToken(
+    userId: string,
+    tokenHash: string,
+    now: Date
+  ): Promise<boolean> {
+    return await prisma.$transaction(async (tx) => {
+      const result = await tx.emailVerificationToken.updateMany({
+        where: {
+          userId,
+          tokenHash,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { usedAt: now },
+      });
+
+      if (result.count === 0) {
+        return false;
+      }
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { isEmailVerified: true },
+      });
+
+      return true;
+    });
+  }
+
   async createPasswordResetToken(
     userId: string,
     tokenHash: string,
     expiresAt: Date
   ): Promise<void> {
-    await prisma.passwordResetToken.create({
-      data: { userId, tokenHash, expiresAt },
+    await prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.updateMany({
+        where: { userId, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+
+      await tx.passwordResetToken.create({
+        data: { userId, tokenHash, expiresAt },
+      });
     });
   }
 
@@ -170,6 +249,47 @@ export class AuthRepository implements IAuthRepository {
     await prisma.passwordResetToken.update({
       where: { tokenHash },
       data: { usedAt: new Date() },
+    });
+  }
+
+  async consumePasswordResetToken(
+    tokenHash: string,
+    passwordHash: string,
+    now: Date
+  ): Promise<boolean> {
+    return await prisma.$transaction(async (tx) => {
+      const token = await tx.passwordResetToken.findUnique({
+        where: { tokenHash },
+        select: { id: true, userId: true },
+      });
+
+      if (!token) {
+        return false;
+      }
+
+      const result = await tx.passwordResetToken.updateMany({
+        where: {
+          id: token.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { usedAt: now },
+      });
+
+      if (result.count === 0) {
+        return false;
+      }
+
+      await tx.user.update({
+        where: { id: token.userId },
+        data: { passwordHash },
+      });
+
+      await tx.session.deleteMany({
+        where: { userId: token.userId },
+      });
+
+      return true;
     });
   }
 }

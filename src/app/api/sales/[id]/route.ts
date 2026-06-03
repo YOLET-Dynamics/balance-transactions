@@ -1,6 +1,7 @@
-import { createRoute } from "@/lib/api/route-handler";
+import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
 import { salesService } from "@/application/services/sales.service";
 import { requireRole } from "@/lib/middleware/auth.middleware";
+import { updateSalesInvoiceSchema } from "@/lib/validation/schemas";
 
 export const GET = createRoute(
   async ({ params, auth }) => {
@@ -17,7 +18,17 @@ export const PATCH = createRoute(
   async ({ params, auth, request }) => {
     requireRole(auth!, "Manager");
 
-    const body = await request.json();
+    const body = getValidatedBody<typeof updateSalesInvoiceSchema._type>(request);
+    if (body.fiscalReceiptNumber !== undefined) {
+      const existing = await salesService.getInvoiceById(auth!.orgId, params!.id);
+      if (
+        existing.status === "Paid" &&
+        existing.fiscalReceiptNumber &&
+        existing.fiscalReceiptNumber !== body.fiscalReceiptNumber
+      ) {
+        requireRole(auth!, "Admin");
+      }
+    }
 
     const invoice = await salesService.updateInvoice(
       auth!.orgId,
@@ -30,6 +41,7 @@ export const PATCH = createRoute(
   {
     requireAuth: true,
     rateLimit: "mutations",
+    bodySchema: updateSalesInvoiceSchema,
   }
 );
 

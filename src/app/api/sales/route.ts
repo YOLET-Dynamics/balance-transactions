@@ -1,7 +1,12 @@
-import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
+import {
+  createRoute,
+  getAllowedSearchParam,
+  getPaginationParams,
+  getValidatedBody,
+  getYearSearchParam,
+} from "@/lib/api/route-handler";
 import {
   createSalesInvoiceSchema,
-  paginationSchema,
 } from "@/lib/validation/schemas";
 import { salesService } from "@/application/services/sales.service";
 import { requireRole } from "@/lib/middleware/auth.middleware";
@@ -34,19 +39,22 @@ export const POST = createRoute(
 export const GET = createRoute(
   async ({ request, auth }) => {
     const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get("page") || "1");
-    const limit = parseInt(url.searchParams.get("limit") || "20");
+    const { page, limit } = getPaginationParams(request);
     const search = url.searchParams.get("search") || undefined;
-    const status = url.searchParams.get("status") || undefined;
-    const year = url.searchParams.get("year")
-      ? parseInt(url.searchParams.get("year")!)
-      : undefined;
+    const status = getAllowedSearchParam(request, "status", [
+      "Draft",
+      "Pending",
+      "Paid",
+      "Overdue",
+      "Cancelled",
+    ] as const);
+    const year = getYearSearchParam(request);
 
     const result = await salesService.listInvoices(auth!.orgId, {
       page,
       limit,
       search,
-      status: status !== "all" ? status : undefined,
+      status,
       kind: "Invoice",
       year,
     });

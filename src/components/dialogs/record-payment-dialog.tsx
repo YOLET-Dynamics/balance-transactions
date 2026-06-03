@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,16 +25,15 @@ import { PaymentMethodEnum } from "@/lib/validation/schemas";
 import { useSession } from "@/lib/hooks/use-session";
 import { Loader2 } from "lucide-react";
 
-const recordPaymentSchema = z.object({
-  method: z.string(),
-  amount: z.number().positive(),
-  fiscalReceiptNumber: z.string().min(1, "Fiscal receipt number is required"),
-  createdBy: z.string().optional(),
-  reviewedBy: z.string().optional(),
-  authorizedBy: z.string().optional(),
-});
-
-type RecordPaymentFormData = z.infer<typeof recordPaymentSchema>;
+type RecordPaymentFormData = {
+  method: string;
+  amount: number;
+  fiscalReceiptNumber?: string;
+  advanceReceiptNumber?: string;
+  createdBy?: string;
+  reviewedBy?: string;
+  authorizedBy?: string;
+};
 
 interface RecordPaymentDialogProps {
   open: boolean;
@@ -58,6 +57,45 @@ export function RecordPaymentDialog({
   documentNumber,
 }: RecordPaymentDialogProps) {
   const { data: session } = useSession();
+  const schema = useMemo(
+    () =>
+      z
+        .object({
+          method: z.string(),
+          amount: z
+            .number()
+            .positive()
+            .max(defaultAmount, "Payment cannot exceed the balance due"),
+          fiscalReceiptNumber: z.string().trim().optional(),
+          advanceReceiptNumber: z.string().trim().optional(),
+          createdBy: z.string().optional(),
+          reviewedBy: z.string().optional(),
+          authorizedBy: z.string().optional(),
+        })
+        .superRefine((data, ctx) => {
+          if (documentType !== "Invoice" || direction !== "Incoming") {
+            return;
+          }
+
+          const isFinalPayment = data.amount >= defaultAmount - 0.005;
+          if (isFinalPayment && !data.fiscalReceiptNumber) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["fiscalReceiptNumber"],
+              message: "FS number is required for the final payment",
+            });
+          }
+
+          if (!isFinalPayment && !data.advanceReceiptNumber) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["advanceReceiptNumber"],
+              message: "Advance receipt number is required for partial payments",
+            });
+          }
+        }),
+    [defaultAmount, direction, documentType]
+  );
 
   const {
     register,
@@ -67,11 +105,12 @@ export function RecordPaymentDialog({
     reset,
     formState: { errors },
   } = useForm<RecordPaymentFormData>({
-    resolver: zodResolver(recordPaymentSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       method: "Cash",
       amount: defaultAmount,
       fiscalReceiptNumber: "",
+      advanceReceiptNumber: "",
       createdBy: "",
       reviewedBy: "",
       authorizedBy: "",
@@ -79,6 +118,9 @@ export function RecordPaymentDialog({
   });
 
   const method = watch("method");
+  const amount = watch("amount");
+  const isInvoiceIncoming = documentType === "Invoice" && direction === "Incoming";
+  const isFinalPayment = amount >= defaultAmount - 0.005;
 
   useEffect(() => {
     if (open && session?.user) {
@@ -157,24 +199,50 @@ export function RecordPaymentDialog({
             )}
           </div>
 
-          {/* Fiscal Receipt Number */}
-          <div className="space-y-2">
-            <Label htmlFor="fiscalReceiptNumber" className="text-gray-300">
-              Fiscal Receipt Number *
-            </Label>
-            <Input
-              id="fiscalReceiptNumber"
-              {...register("fiscalReceiptNumber")}
-              className="bg-white/5 border-white/10 text-white font-mono"
-              placeholder="Enter fiscal receipt number"
-            />
-            {errors.fiscalReceiptNumber && (
-              <p className="text-red-400 text-sm">{errors.fiscalReceiptNumber.message}</p>
-            )}
-            <p className="text-xs text-gray-500">
-              Required for all paid invoices
-            </p>
-          </div>
+          {isInvoiceIncoming && isFinalPayment && (
+            <div className="space-y-2">
+              <Label htmlFor="fiscalReceiptNumber" className="text-gray-300">
+                FS Number *
+              </Label>
+              <Input
+                id="fiscalReceiptNumber"
+                {...register("fiscalReceiptNumber")}
+                className="bg-white/5 border-white/10 text-white font-mono"
+                placeholder="Fiscal sales receipt number"
+              />
+              {errors.fiscalReceiptNumber && (
+                <p className="text-red-400 text-sm">
+                  {errors.fiscalReceiptNumber.message}
+                </p>
+              )}
+              <p className="text-xs text-gray-500">
+                Required for the final payment. The invoice becomes a Cash Sales
+                Attachment.
+              </p>
+            </div>
+          )}
+
+          {isInvoiceIncoming && !isFinalPayment && (
+            <div className="space-y-2">
+              <Label htmlFor="advanceReceiptNumber" className="text-gray-300">
+                Advance Receipt Number *
+              </Label>
+              <Input
+                id="advanceReceiptNumber"
+                {...register("advanceReceiptNumber")}
+                className="bg-white/5 border-white/10 text-white font-mono"
+                placeholder="Advance receipt number"
+              />
+              {errors.advanceReceiptNumber && (
+                <p className="text-red-400 text-sm">
+                  {errors.advanceReceiptNumber.message}
+                </p>
+              )}
+              <p className="text-xs text-gray-500">
+                Partial payments use advance receipt numbers, not FS numbers.
+              </p>
+            </div>
+          )}
 
           {/* Created By */}
           <div className="space-y-2">
@@ -249,4 +317,3 @@ export function RecordPaymentDialog({
     </Dialog>
   );
 }
-

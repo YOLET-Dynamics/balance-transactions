@@ -34,6 +34,17 @@ export const GET = createRoute(
         vatNumber: organization.vatNumber,
         phone: organization.phone,
         email: organization.email,
+        isWithholdingAgent: organization.isWithholdingAgent,
+        logoAttachment: organization.logoAttachment
+          ? {
+              id: organization.logoAttachment.id,
+              fileKey: organization.logoAttachment.fileKey,
+              url: organization.logoAttachment.url,
+              mime: organization.logoAttachment.mime,
+              size: organization.logoAttachment.size,
+              kind: organization.logoAttachment.kind,
+            }
+          : null,
       },
       membership: {
         id: membership.id,
@@ -46,4 +57,3 @@ export const GET = createRoute(
     rateLimit: "queries",
   }
 );
-

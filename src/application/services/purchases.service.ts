@@ -4,7 +4,16 @@ import type {
   PurchaseBill,
   ListOptions,
 } from "@/domain/repositories/purchases.repository";
-import { NotFoundError } from "@/lib/utils/errors";
+import { NotFoundError, ValidationError } from "@/lib/utils/errors";
+import {
+  addMoney,
+  calculateVAT,
+  calculateWithholding,
+  roundMoney,
+  subtractMoney,
+} from "@/lib/utils/money";
+
+type ItemType = "Good" | "Service";
 
 interface CreateBillInput {
   vendorLegalName?: string;
@@ -21,7 +30,8 @@ interface CreateBillInput {
   paymentRef?: string;
 
   status?: string;
-  withholdingPct?: number;
+  applyWithholding?: boolean;
+  withholdingOverrideReason?: string;
 
   createdBy?: string;
   reviewedBy?: string;
@@ -29,6 +39,7 @@ interface CreateBillInput {
 
   lines: Array<{
     itemId?: string;
+    lineType?: ItemType;
     description: string;
     unit: string;
     quantity: number;
@@ -41,42 +52,92 @@ interface CreateBillInput {
 class PurchasesService {
   private purchasesRepo = purchasesRepository;
 
+  private resolveApplyWithholding(
+    isWithholdingAgent: boolean,
+    input: Partial<CreateBillInput>
+  ): boolean {
+    return input.applyWithholding ?? isWithholdingAgent;
+  }
+
+  private calculateBillData(
+    input: CreateBillInput,
+    isWithholdingAgent: boolean
+  ) {
+    const applyWithholding = this.resolveApplyWithholding(
+      isWithholdingAgent,
+      input
+    );
+
+    if (
+      isWithholdingAgent &&
+      !applyWithholding &&
+      !input.withholdingOverrideReason?.trim()
+    ) {
+      throw new ValidationError(
+        "Reason is required when withholding is disabled",
+        {
+          withholdingOverrideReason: [
+            "Reason is required when withholding is disabled",
+          ],
+        }
+      );
+    }
+
+    const lines = input.lines.map((line) => {
+      const baseAmount = roundMoney(line.quantity * line.unitPrice);
+      const lineTotal = subtractMoney(baseAmount, line.discountAmount || 0);
+
+      return {
+        ...line,
+        lineType: line.lineType || "Good",
+        discountAmount: line.discountAmount || 0,
+        lineTotal,
+      };
+    });
+
+    const subtotal = lines.reduce(
+      (sum, line) => addMoney(sum, line.lineTotal),
+      0
+    );
+
+    const vatableAmount = lines
+      .filter((line) => line.isVatApplicable)
+      .reduce((sum, line) => addMoney(sum, line.lineTotal), 0);
+    const vatAmount = calculateVAT(vatableAmount);
+    const total = addMoney(subtotal, vatAmount);
+
+    const { withheldPct, withheldAmount } = calculateWithholding(
+      lines,
+      applyWithholding
+    );
+    const netPaid = subtractMoney(total, withheldAmount);
+
+    return {
+      lines,
+      subtotal,
+      vatAmount,
+      total,
+      withheldPct,
+      withheldAmount,
+      netPaid,
+      withholdingOverrideReason:
+        isWithholdingAgent && !applyWithholding
+          ? input.withholdingOverrideReason?.trim()
+          : undefined,
+    };
+  }
+
   async createBill(
     orgId: string,
     orgCode: string,
-    input: CreateBillInput
+    input: CreateBillInput,
+    isWithholdingAgent: boolean = false
   ): Promise<PurchaseBill> {
-    const now = new Date();
-    const year = now.getFullYear();
-
     // Generate document number using sequence service
     const docNumber = await sequenceService.allocateNext(orgId, orgCode, "PB");
 
     const { full: number, year: docYear, seqValue } = docNumber;
-
-    // Calculate totals
-    const lineTotals = input.lines.map((line) => {
-      const baseAmount = line.quantity * line.unitPrice;
-      const discount = line.discountAmount || 0;
-      return baseAmount - discount;
-    });
-
-    const subtotal = lineTotals.reduce((sum, total) => sum + total, 0);
-
-    // Calculate VAT (15%)
-    const vatableAmount = input.lines.reduce((sum, line, index) => {
-      if (line.isVatApplicable) {
-        return sum + lineTotals[index];
-      }
-      return sum;
-    }, 0);
-    const vatAmount = vatableAmount * 0.15;
-
-    const total = subtotal + vatAmount;
-
-    const withheldPct = input.withholdingPct || 0;
-    const withheldAmount = withheldPct > 0 ? (subtotal * withheldPct) / 100 : 0;
-    const netPaid = total - withheldAmount;
+    const totals = this.calculateBillData(input, isWithholdingAgent);
 
     const billData = {
       number,
@@ -92,13 +153,15 @@ class PurchasesService {
       vendorVatNumber: input.vendorVatNumber,
       vendorPhone: input.vendorPhone,
 
-      subtotal,
-      vatAmount,
-      total,
+      subtotal: totals.subtotal,
+      vatAmount: totals.vatAmount,
+      total: totals.total,
 
-      withheldPct: withheldPct > 0 ? withheldPct : undefined,
-      withheldAmount: withheldAmount > 0 ? withheldAmount : undefined,
-      netPaid,
+      withheldPct: totals.withheldPct > 0 ? totals.withheldPct : undefined,
+      withheldAmount:
+        totals.withheldAmount > 0 ? totals.withheldAmount : undefined,
+      withholdingOverrideReason: totals.withholdingOverrideReason,
+      netPaid: totals.netPaid,
 
       reason: input.reason,
       paymentMethod: input.paymentMethod as any,
@@ -110,10 +173,7 @@ class PurchasesService {
       reviewedBy: input.reviewedBy,
       authorizedBy: input.authorizedBy,
 
-      lines: input.lines.map((line, index) => ({
-        ...line,
-        lineTotal: lineTotals[index],
-      })),
+      lines: totals.lines,
     };
 
     return await this.purchasesRepo.create(orgId, billData);
@@ -134,11 +194,68 @@ class PurchasesService {
   async updateBill(
     orgId: string,
     id: string,
-    data: Partial<CreateBillInput>
+    data: Partial<CreateBillInput>,
+    isWithholdingAgent: boolean = false
   ): Promise<PurchaseBill> {
-    await this.getBillById(orgId, id);
+    const existing = await this.getBillById(orgId, id);
+    const nextData: any = { ...data };
 
-    return await this.purchasesRepo.update(orgId, id, data as any);
+    if (data.lines || data.applyWithholding !== undefined) {
+      const mergedInput: CreateBillInput = {
+        vendorLegalName:
+          data.vendorLegalName ?? existing.vendorLegalName ?? undefined,
+        vendorTradeName:
+          data.vendorTradeName ?? existing.vendorTradeName ?? undefined,
+        vendorSubcity: data.vendorSubcity ?? existing.vendorSubcity ?? undefined,
+        vendorCityRegion:
+          data.vendorCityRegion ?? existing.vendorCityRegion ?? undefined,
+        vendorCountry: data.vendorCountry ?? existing.vendorCountry ?? undefined,
+        vendorTin: data.vendorTin ?? existing.vendorTin ?? undefined,
+        vendorVatNumber:
+          data.vendorVatNumber ?? existing.vendorVatNumber ?? undefined,
+        vendorPhone: data.vendorPhone ?? existing.vendorPhone ?? undefined,
+        reason: data.reason ?? existing.reason,
+        paymentMethod: data.paymentMethod ?? existing.paymentMethod,
+        paymentRef: data.paymentRef ?? existing.paymentRef ?? undefined,
+        status: data.status ?? existing.status,
+        applyWithholding:
+          data.applyWithholding ?? Number(existing.withheldAmount || 0) > 0,
+        withholdingOverrideReason:
+          data.withholdingOverrideReason ??
+          existing.withholdingOverrideReason ??
+          undefined,
+        createdBy: data.createdBy ?? existing.createdBy ?? undefined,
+        reviewedBy: data.reviewedBy ?? existing.reviewedBy ?? undefined,
+        authorizedBy: data.authorizedBy ?? existing.authorizedBy ?? undefined,
+        lines:
+          data.lines ??
+          existing.lines?.map((line) => ({
+            itemId: line.itemId || undefined,
+            lineType: line.lineType,
+            description: line.description,
+            unit: line.unit,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            discountAmount: line.discountAmount,
+            isVatApplicable: line.isVatApplicable,
+          })) ??
+          [],
+      };
+      const totals = this.calculateBillData(mergedInput, isWithholdingAgent);
+      Object.assign(nextData, {
+        subtotal: totals.subtotal,
+        vatAmount: totals.vatAmount,
+        total: totals.total,
+        withheldPct: totals.withheldPct > 0 ? totals.withheldPct : null,
+        withheldAmount:
+          totals.withheldAmount > 0 ? totals.withheldAmount : null,
+        withholdingOverrideReason: totals.withholdingOverrideReason,
+        netPaid: totals.netPaid,
+        lines: totals.lines,
+      });
+    }
+
+    return await this.purchasesRepo.update(orgId, id, nextData);
   }
 
   async deleteBill(orgId: string, id: string): Promise<void> {

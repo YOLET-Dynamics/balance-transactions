@@ -123,7 +123,6 @@ export function PurchaseBillForm({
   const [vendorSearch, setVendorSearch] = useState("");
   const [saveVendor, setSaveVendor] = useState(false);
   const [applyWithholding, setApplyWithholding] = useState(false);
-  const [withholdingPct, setWithholdingPct] = useState(2);
 
   const { data: session } = useSession();
   const { data: vendorsData } = useVendors(vendorSearch);
@@ -141,6 +140,7 @@ export function PurchaseBillForm({
     defaultValues: initialData || {
       lines: [
         {
+          lineType: "Good",
           description: "",
           unit: "pcs",
           quantity: 1,
@@ -164,6 +164,15 @@ export function PurchaseBillForm({
   // Handle quick-add template selection
   const handleQuickAdd = (template: (typeof PURCHASE_TEMPLATES)[0]) => {
     append({
+      lineType:
+        template.id === "rent" ||
+        template.id === "telephone" ||
+        template.id === "internet" ||
+        template.id === "electricity" ||
+        template.id === "water" ||
+        template.id === "maintenance"
+          ? "Service"
+          : "Good",
       description: template.description,
       unit: template.unit,
       quantity: template.quantity,
@@ -205,14 +214,24 @@ export function PurchaseBillForm({
 
   // Initialize withholding state from initialData (edit mode)
   useEffect(() => {
+    if (mode === "create" && session?.organization?.isWithholdingAgent) {
+      setApplyWithholding(true);
+      setValue("applyWithholding", true);
+    }
+  }, [mode, session, setValue]);
+
+  useEffect(() => {
     if (mode === "edit" && initialData) {
       const data = initialData as any;
       if (data.withheldPct && data.withheldPct > 0) {
         setApplyWithholding(true);
-        setWithholdingPct(data.withheldPct);
+        setValue("applyWithholding", true);
+      } else if (data.applyWithholding !== undefined) {
+        setApplyWithholding(data.applyWithholding);
+        setValue("applyWithholding", data.applyWithholding);
       }
     }
-  }, [mode, initialData]);
+  }, [mode, initialData, setValue]);
 
   // Handle vendor selection
   const handleVendorSelect = (vendorId: string) => {
@@ -305,8 +324,18 @@ export function PurchaseBillForm({
 
   const calculateWithholding = () => {
     if (!applyWithholding) return 0;
-    const subtotal = calculateSubtotal();
-    return (subtotal * withholdingPct) / 100;
+    const lineTotals = calculateLineTotals();
+    const goodsSubtotal = lines.reduce((sum, line, index) => {
+      return line.lineType === "Good" ? sum + lineTotals[index] : sum;
+    }, 0);
+    const serviceSubtotal = lines.reduce((sum, line, index) => {
+      return line.lineType === "Service" ? sum + lineTotals[index] : sum;
+    }, 0);
+    const taxableBase =
+      (goodsSubtotal > 20000 ? goodsSubtotal : 0) +
+      (serviceSubtotal > 10000 ? serviceSubtotal : 0);
+
+    return (taxableBase * 3) / 100;
   };
 
   const calculateNetPaid = () => {
@@ -319,7 +348,7 @@ export function PurchaseBillForm({
 
     const submitData = {
       ...data,
-      withholdingPct: applyWithholding ? withholdingPct : undefined,
+      applyWithholding,
     } as any;
 
     onSubmit(submitData);
@@ -590,6 +619,7 @@ export function PurchaseBillForm({
             type="button"
             onClick={() =>
               append({
+                lineType: "Good",
                 description: "",
                 unit: "pcs",
                 quantity: 1,
@@ -663,7 +693,28 @@ export function PurchaseBillForm({
                 />
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Line Type *</Label>
+                  <Select
+                    value={watch(`lines.${index}.lineType`) || "Good"}
+                    onValueChange={(value) =>
+                      setValue(
+                        `lines.${index}.lineType`,
+                        value as "Good" | "Service"
+                      )
+                    }
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Good">Good</SelectItem>
+                      <SelectItem value="Service">Service</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label className="text-gray-300">Quantity *</Label>
                   <Input
@@ -773,43 +824,27 @@ export function PurchaseBillForm({
               <Checkbox
                 id="applyWithholding"
                 checked={applyWithholding}
-                onCheckedChange={(checked) =>
-                  setApplyWithholding(checked as boolean)
-                }
+                onCheckedChange={(checked) => {
+                  setApplyWithholding(checked as boolean);
+                  setValue("applyWithholding", checked as boolean);
+                }}
               />
               <Label
                 htmlFor="applyWithholding"
                 className="text-sm text-gray-300 cursor-pointer"
               >
-                Apply withholding tax (if I withhold on this purchase)
+                Apply withholding tax
               </Label>
             </div>
+            <p className="text-xs text-gray-400 pl-6">
+              Calculated before VAT at 3%: services over ETB 10,000 and goods
+              over ETB 20,000.
+            </p>
 
             {applyWithholding && (
               <div className="space-y-3 pl-6">
-                <div className="flex items-center gap-2">
-                  <Label
-                    htmlFor="withholdingPct"
-                    className="text-gray-300 text-sm"
-                  >
-                    Withholding %:
-                  </Label>
-                  <Input
-                    id="withholdingPct"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    value={withholdingPct}
-                    onChange={(e) =>
-                      setWithholdingPct(Number(e.target.value) || 0)
-                    }
-                    className="w-24 bg-white/5 border-white/10 text-white"
-                  />
-                </div>
-
                 <div className="flex justify-between items-center text-sm text-red-400">
-                  <span>Withholding Tax ({withholdingPct}%):</span>
+                  <span>Withholding Tax (3%):</span>
                   <span className="font-medium">
                     -ETB {calculateWithholding().toFixed(2)}
                   </span>
@@ -823,6 +858,29 @@ export function PurchaseBillForm({
                     ETB {calculateNetPaid().toFixed(2)}
                   </span>
                 </div>
+              </div>
+            )}
+
+            {!applyWithholding && session?.organization?.isWithholdingAgent && (
+              <div className="space-y-2 pl-6">
+                <Label
+                  htmlFor="withholdingOverrideReason"
+                  className="text-gray-300"
+                >
+                  Reason WHT is not applied *
+                </Label>
+                <Textarea
+                  id="withholdingOverrideReason"
+                  {...register("withholdingOverrideReason")}
+                  className="bg-white/5 border-white/10 text-white"
+                  placeholder="Explain why this purchase is exempt from WHT..."
+                  rows={3}
+                />
+                {errors.withholdingOverrideReason && (
+                  <p className="text-sm text-red-400">
+                    {errors.withholdingOverrideReason.message}
+                  </p>
+                )}
               </div>
             )}
           </div>

@@ -1,45 +1,15 @@
 import { createRoute } from "@/lib/api/route-handler";
 import { requireRole } from "@/lib/middleware/auth.middleware";
-import { prisma } from "@/infrastructure/database/prisma";
-import { z } from "zod";
-
-const uploadLogoSchema = z.object({
-  url: z.string().url(),
-  fileKey: z.string(),
-  fileName: z.string(),
-  fileSize: z.number(),
-});
+import { withTenantContext } from "@/infrastructure/database/prisma";
+import { ForbiddenError } from "@/lib/utils/errors";
 
 export const POST = createRoute(
-  async ({ request, auth }) => {
+  async ({ auth }) => {
     requireRole(auth!, "Admin");
 
-    const body = await request.json();
-    const validated = uploadLogoSchema.parse(body);
-
-    const attachment = await prisma.attachment.create({
-      data: {
-        orgId: auth!.orgId,
-        fileKey: validated.fileKey,
-        url: validated.url,
-        mime: "image/png",
-        size: validated.fileSize,
-        kind: "Logo",
-        createdBy: auth!.userId,
-      },
-    });
-
-    const organization = await prisma.organization.update({
-      where: { id: auth!.orgId },
-      data: {
-        logoAttachmentId: attachment.id,
-      },
-      include: {
-        logoAttachment: true,
-      },
-    });
-
-    return { organization, attachment };
+    throw new ForbiddenError(
+      "Logo uploads must complete through UploadThing"
+    );
   },
   {
     requireAuth: true,
@@ -51,22 +21,24 @@ export const DELETE = createRoute(
   async ({ auth }) => {
     requireRole(auth!, "Admin");
 
-    const org = await prisma.organization.findUnique({
-      where: { id: auth!.orgId },
-      select: { logoAttachmentId: true },
-    });
-
-    if (org?.logoAttachmentId) {
-      await prisma.attachment.delete({
-        where: { id: org.logoAttachmentId },
+    await withTenantContext(auth!.orgId, async (tx) => {
+      const org = await tx.organization.findUnique({
+        where: { id: auth!.orgId },
+        select: { logoAttachmentId: true },
       });
-    }
 
-    await prisma.organization.update({
-      where: { id: auth!.orgId },
-      data: {
-        logoAttachmentId: null,
-      },
+      await tx.organization.update({
+        where: { id: auth!.orgId },
+        data: {
+          logoAttachmentId: null,
+        },
+      });
+
+      if (org?.logoAttachmentId) {
+        await tx.attachment.deleteMany({
+          where: { id: org.logoAttachmentId, orgId: auth!.orgId },
+        });
+      }
     });
 
     return { success: true, message: "Logo removed successfully" };
@@ -76,4 +48,3 @@ export const DELETE = createRoute(
     rateLimit: "mutations",
   }
 );
-

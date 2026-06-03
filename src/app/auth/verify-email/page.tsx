@@ -96,11 +96,11 @@ function VerifyEmailContent() {
 
   if (verified) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-[#0a0a0a] text-white">
         <div className="flex items-center justify-center min-h-screen px-6">
           <div className="w-full max-w-md space-y-8">
             <div className="text-center">
-              <h1 className="text-3xl font-logo font-bold mb-2">Balance</h1>
+              <h1 className="text-3xl font-logo mb-2">Balance</h1>
             </div>
 
             <div className="border border-white/10 rounded-2xl p-8 bg-white/5 text-center space-y-6">
@@ -108,7 +108,7 @@ function VerifyEmailContent() {
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-semibold text-white">
                   Email verified!
                 </h2>
                 <p className="text-gray-400">
@@ -124,7 +124,7 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Back to home link */}
       <div className="absolute top-6 left-6 z-10">
         <Link
@@ -139,16 +139,16 @@ function VerifyEmailContent() {
       <div className="flex items-center justify-center min-h-screen px-6">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-logo font-bold mb-2">Balance</h1>
+            <h1 className="text-3xl font-logo mb-2">Balance</h1>
             <p className="text-gray-400">Verify your email address</p>
           </div>
 
           <div className="border border-white/10 rounded-2xl p-8 bg-white/5 space-y-6">
             <div className="text-center">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-brand-yellow-500/10 mb-4">
-                <Mail className="h-8 w-8 text-brand-yellow-500" />
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.06] mb-4">
+                <Mail className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-semibold text-white mb-2">
                 Check your email
               </h2>
               <p className="text-gray-400 text-sm">
@@ -165,7 +165,7 @@ function VerifyEmailContent() {
                   id="email"
                   type="email"
                   placeholder="you@example.com"
-                  className="bg-black border-white/20 text-white placeholder:text-gray-500"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-gray-500"
                   {...register("email")}
                 />
                 {errors.email && (
@@ -219,7 +219,7 @@ function VerifyEmailContent() {
                 size="sm"
                 onClick={handleResendOtp}
                 disabled={isResending || countdown > 0}
-                className="text-brand-yellow-500 hover:text-brand-yellow-600 hover:bg-white/5"
+                className="text-gray-300 hover:text-white hover:bg-white/5"
               >
                 {isResending ? (
                   <>
@@ -258,7 +258,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-brand-yellow-500" />
         </div>
       }

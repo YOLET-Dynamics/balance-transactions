@@ -90,14 +90,14 @@ export default function SalesPage() {
     );
   };
 
-  const getTypeBadge = (type: string) => {
-    return type === "Cash" ? (
+  const getTypeBadge = (type: string, status: string) => {
+    return type === "Cash" || status === "Paid" ? (
       <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-        💵 Cash
+        Cash Sales Attachment
       </Badge>
     ) : (
       <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-        📅 Credit
+        Credit Invoice
       </Badge>
     );
   };
@@ -145,9 +145,9 @@ export default function SalesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Sales Invoices</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Sales Documents</h1>
           <p className="text-gray-400 mt-1 text-sm sm:text-base">
-            Manage and track your sales transactions
+            Manage proformas, credit invoices, and cash sales attachments
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -277,7 +277,9 @@ export default function SalesPage() {
                         <TableCell className="font-medium text-white">
                           {invoice.number}
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">{getTypeBadge(invoice.invoiceType)}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {getTypeBadge(invoice.invoiceType, invoice.status)}
+                        </TableCell>
                         <TableCell className="text-gray-300">
                           {invoice.buyerLegalName ||
                             invoice.buyerTradeName ||
@@ -380,7 +382,7 @@ export default function SalesPage() {
                                   }
                                 }}
                                 className="h-8 w-8 p-0 text-green-400 hover:text-green-300 hover:bg-green-500/10"
-                                title="Download Paid Receipt"
+                                title="Download Cash Sales Attachment"
                               >
                                 <FileText className="h-4 w-4" />
                               </Button>

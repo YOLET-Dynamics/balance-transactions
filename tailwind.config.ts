@@ -28,7 +28,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: [
-          "var(--font-dm-sans)",
+          "var(--font-space-grotesk)",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,15 +35,20 @@ import {
 } from "@/components/ui/popover";
 import {
   createSalesInvoiceSchema,
+  createProformaInvoiceSchema,
   PartyTypeEnum,
   GoodsOrServiceEnum,
   PaymentMethodEnum,
   InvoiceStatusEnum,
   InvoiceTypeEnum,
 } from "@/lib/validation/schemas";
-import { useCustomers, useCreateCustomer } from "@/lib/hooks/use-customers";
+import {
+  useCustomerLedger,
+  useCustomers,
+  useCreateCustomer,
+} from "@/lib/hooks/use-customers";
 import { useSession } from "@/lib/hooks/use-session";
-import { useItems } from "@/lib/hooks/use-items";
+import { type Item, useItems } from "@/lib/hooks/use-items";
 
 type InvoiceFormData = z.infer<typeof createSalesInvoiceSchema>;
 
@@ -53,6 +58,7 @@ interface InvoiceFormProps {
   onSaveDraft?: (data: InvoiceFormData) => void;
   isLoading?: boolean;
   mode?: "create" | "edit";
+  documentKind?: "invoice" | "proforma";
 }
 
 export function InvoiceForm({
@@ -61,36 +67,61 @@ export function InvoiceForm({
   onSaveDraft,
   isLoading = false,
   mode = "create",
+  documentKind = "invoice",
 }: InvoiceFormProps) {
   const [vatRate] = useState(0.15);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [saveAsCustomer, setSaveAsCustomer] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
   const [applyWithholding, setApplyWithholding] = useState(false);
 
   const { data: customersData } = useCustomers(customerSearch);
   const createCustomer = useCreateCustomer();
   const customers = customersData?.customers || [];
+  const selectedCustomerLedgerId =
+    selectedCustomerId && selectedCustomerId !== "WALK_IN"
+      ? selectedCustomerId
+      : undefined;
+  const { data: selectedCustomerLedger } = useCustomerLedger(
+    selectedCustomerLedgerId
+  );
   const { data: session } = useSession();
   const { data: itemsData } = useItems({ isActive: true, limit: 100 });
-  const items = (itemsData as any)?.items || [];
+  const items = itemsData?.items || [];
 
   const today = new Date();
   const thirtyDaysFromNow = new Date(today);
   thirtyDaysFromNow.setDate(today.getDate() + 30);
+  const formSchema = useMemo(
+    () =>
+      documentKind === "proforma"
+        ? createProformaInvoiceSchema
+        : createSalesInvoiceSchema,
+    [documentKind]
+  );
+
+  const formatCurrency = (amount: number): string => {
+    return `ETB ${new Intl.NumberFormat("en-ET", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)}`;
+  };
 
   const {
     register,
     control,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     formState: { errors },
   } = useForm<InvoiceFormData>({
-    resolver: zodResolver(createSalesInvoiceSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: initialData || {
       lines: [
         {
+          lineType: "Good",
           description: "",
           unit: "pcs",
           quantity: 1,
@@ -166,7 +197,7 @@ export function InvoiceForm({
     }
   };
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "lines",
   });
@@ -191,24 +222,51 @@ export function InvoiceForm({
   }, [invoiceType, invoiceDate, setValue]);
 
   // Handle quick-add product selection
-  const handleQuickAddProduct = (item: any) => {
-    append({
+  const isBlankLine = (line: InvoiceFormData["lines"][number]): boolean => {
+    return (
+      !line.itemId &&
+      !line.description?.trim() &&
+      Number(line.quantity || 0) === 1 &&
+      Number(line.unitPrice || 0) === 0
+    );
+  };
+
+  const handleQuickAddProduct = (item: Item): void => {
+    const productLine = {
       description:
         item.name + (item.description ? ` - ${item.description}` : ""),
+      itemId: item.id,
+      lineType: item.type || "Good",
       unit: item.unit,
       quantity: 1,
       unitPrice: Number(item.defaultPrice),
       isVatApplicable: item.vatApplicable,
-    });
+    };
 
-    // Scroll to the newly added item
+    const currentLines = getValues("lines");
+    const blankLineIndex = currentLines.findIndex(isBlankLine);
+    const nextLines =
+      blankLineIndex >= 0
+        ? currentLines.map((line, index) =>
+            index === blankLineIndex ? productLine : line
+          )
+        : [...currentLines, productLine];
+    const normalizedLines = nextLines.filter(
+      (line, index) => index === blankLineIndex || !isBlankLine(line)
+    );
+    const targetIndex =
+      blankLineIndex >= 0
+        ? normalizedLines.findIndex((line) => line.itemId === item.id)
+        : normalizedLines.length - 1;
+
+    replace(normalizedLines);
+
     setTimeout(() => {
       const lineItems = document.querySelectorAll("[data-line-item]");
-      const lastItem = lineItems[lineItems.length - 1];
-      if (lastItem) {
-        lastItem.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Focus on the quantity field for easy adjustment
-        const qtyInput = lastItem.querySelector(
+      const selectedItem = lineItems[targetIndex];
+      if (selectedItem) {
+        selectedItem.scrollIntoView({ behavior: "smooth", block: "center" });
+        const qtyInput = selectedItem.querySelector(
           'input[type="number"]'
         ) as HTMLInputElement;
         if (qtyInput) {
@@ -218,6 +276,23 @@ export function InvoiceForm({
       }
     }, 100);
   };
+
+  const visibleItems = useMemo(() => {
+    const normalizedSearch = productSearch.trim().toLowerCase();
+    if (!normalizedSearch) return items.slice(0, 20);
+
+    return items
+      .filter((item) => {
+        return [
+          item.name,
+          item.code,
+          item.description || "",
+          item.sku || "",
+          item.barcode || "",
+        ].some((value) => value.toLowerCase().includes(normalizedSearch));
+      })
+      .slice(0, 20);
+  }, [items, productSearch]);
 
   const calculateLineTotals = () => {
     return lines.map((line) => {
@@ -243,9 +318,19 @@ export function InvoiceForm({
   };
 
   const calculateWithholding = () => {
-    if (applyWithholding && buyerType === "Company" && goodsOrService === "Service") {
-      const subtotal = calculateSubtotal();
-      return subtotal * 0.02;
+    if (applyWithholding) {
+      const lineTotals = calculateLineTotals();
+      const goodsSubtotal = lines.reduce((sum, line, index) => {
+        return line.lineType === "Good" ? sum + lineTotals[index] : sum;
+      }, 0);
+      const serviceSubtotal = lines.reduce((sum, line, index) => {
+        return line.lineType === "Service" ? sum + lineTotals[index] : sum;
+      }, 0);
+      const taxableBase =
+        (goodsSubtotal > 20000 ? goodsSubtotal : 0) +
+        (serviceSubtotal > 10000 ? serviceSubtotal : 0);
+
+      return taxableBase * 0.03;
     }
     return 0;
   };
@@ -284,19 +369,30 @@ export function InvoiceForm({
 
   const handleSaveDraft = async () => {
     const data = watch();
+    const normalizedLines = data.lines.filter((line) => !isBlankLine(line));
+    const draftData = {
+      ...data,
+      lines: normalizedLines.length > 0 ? normalizedLines : data.lines,
+    };
 
-    await saveCustomerIfNeeded(data);
+    await saveCustomerIfNeeded(draftData);
 
     if (onSaveDraft) {
-      onSaveDraft({ ...data, status: "Draft" });
+      onSaveDraft({ ...draftData, status: "Draft" });
     }
   };
 
   const handleFormSubmit = async (data: InvoiceFormData) => {
     try {
-      await saveCustomerIfNeeded(data);
+      const normalizedLines = data.lines.filter((line) => !isBlankLine(line));
+      const submitData = {
+        ...data,
+        lines: normalizedLines.length > 0 ? normalizedLines : data.lines,
+      };
 
-      onSubmit(data);
+      await saveCustomerIfNeeded(submitData);
+
+      onSubmit(submitData);
     } catch (error) {
       throw error;
     }
@@ -316,7 +412,9 @@ export function InvoiceForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="invoiceType" className="text-gray-300">
-                Invoice Type *
+                {documentKind === "proforma"
+                  ? "Accepted As *"
+                  : "Invoice Type *"}
               </Label>
               <Select
                 value={watch("invoiceType")}
@@ -330,7 +428,9 @@ export function InvoiceForm({
                 <SelectContent>
                   {InvoiceTypeEnum.options.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {type === "Cash" ? "💵 Cash Sale" : "📅 Credit Sale"}
+                      {type === "Cash"
+                        ? "Cash Sales Attachment"
+                        : "Credit Invoice"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -341,12 +441,36 @@ export function InvoiceForm({
                 </p>
               )}
               <p className="text-xs text-gray-400">
-                {invoiceType === "Cash"
-                  ? "Payment received immediately, attached to fiscal receipt"
-                  : "Payment due on a future date, allows credit terms"}
+                {documentKind === "proforma"
+                  ? "Quote only. Choose what this should become if accepted."
+                  : invoiceType === "Cash"
+                    ? "Payment received immediately, attached to fiscal receipt"
+                    : "Payment due on a future date, allows credit terms"}
               </p>
             </div>
           </div>
+
+          {documentKind === "invoice" && invoiceType === "Cash" && (
+            <div className="space-y-2">
+              <Label htmlFor="fiscalReceiptNumber" className="text-gray-300">
+                FS Number *
+              </Label>
+              <Input
+                id="fiscalReceiptNumber"
+                {...register("fiscalReceiptNumber")}
+                className="bg-white/5 border-white/10 text-white font-mono"
+                placeholder="Fiscal sales receipt number"
+              />
+              {errors.fiscalReceiptNumber && (
+                <p className="text-sm text-red-400">
+                  {errors.fiscalReceiptNumber.message}
+                </p>
+              )}
+              <p className="text-xs text-gray-400">
+                Required before saving a Cash Sales Attachment.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -531,6 +655,31 @@ export function InvoiceForm({
                   values. You can modify them if needed.
                 </p>
               ) : null}
+
+              {selectedCustomerLedger && (
+                <div className="grid grid-cols-1 gap-3 border-t border-brand-yellow-500/20 pt-3 sm:grid-cols-3">
+                  <div>
+                    <p className="text-xs text-gray-400">Outstanding</p>
+                    <p className="text-sm font-semibold text-white">
+                      {formatCurrency(
+                        selectedCustomerLedger.summary.outstanding
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Overdue</p>
+                    <p className="text-sm font-semibold text-red-300">
+                      {formatCurrency(selectedCustomerLedger.summary.overdue)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Documents</p>
+                    <p className="text-sm font-semibold text-white">
+                      {selectedCustomerLedger.summary.invoiceCount} invoices
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -738,7 +887,7 @@ export function InvoiceForm({
             />
           </div>
 
-          {buyerType === "Company" && goodsOrService === "Service" && (
+          {buyerType === "Company" && (
             <div className="flex items-start space-x-3 p-4 bg-white/5 rounded-lg border border-white/10">
               <Checkbox
                 id="applyWithholding"
@@ -757,8 +906,9 @@ export function InvoiceForm({
                   Apply Withholding Tax (3%)
                 </Label>
                 <p className="text-sm text-gray-400 mt-1">
-                  Check this box if the buyer will withhold 3% tax from the
-                  payment
+                  Check this if the payer will deduct WHT. It is calculated
+                  before VAT: services over ETB 10,000 and goods over ETB
+                  20,000.
                 </p>
               </div>
             </div>
@@ -773,6 +923,7 @@ export function InvoiceForm({
             type="button"
             onClick={() =>
               append({
+                lineType: "Good",
                 description: "",
                 unit: "pcs",
                 quantity: 1,
@@ -792,28 +943,43 @@ export function InvoiceForm({
             {/* Quick Add Products */}
             {items.length > 0 && (
               <div className="p-4 bg-gradient-to-r from-brand-yellow-500/10 to-transparent border border-brand-yellow-500/20 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <Package className="h-4 w-4 text-brand-yellow-500" />
-                  <h5 className="text-sm font-medium text-white">
-                    Quick Add Products
-                  </h5>
-                  <span className="text-xs text-gray-500">
-                    ({items.length} products available)
-                  </span>
+                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-brand-yellow-500" />
+                    <h5 className="text-sm font-medium text-white">
+                      Quick Add Products
+                    </h5>
+                    <span className="text-xs text-gray-500">
+                      ({items.length} available)
+                    </span>
+                  </div>
+                  <Input
+                    value={productSearch}
+                    onChange={(event) => setProductSearch(event.target.value)}
+                    placeholder="Search catalog..."
+                    className="h-9 bg-white/5 border-white/10 text-white placeholder:text-gray-500 sm:max-w-xs"
+                    autoComplete="off"
+                  />
                 </div>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                  {items.slice(0, 20).map((item: any) => (
-                    <Badge
-                      key={item.id}
-                      onClick={() => handleQuickAddProduct(item)}
-                      className="cursor-pointer bg-white/5 hover:bg-brand-yellow-500/20 text-gray-300 hover:text-brand-yellow-400 border-white/10 hover:border-brand-yellow-500/30 transition-all px-3 py-1.5 text-sm"
-                    >
-                      {item.name}
-                      <span className="ml-2 text-xs opacity-70">
-                        ETB {Number(item.defaultPrice).toFixed(2)}
-                      </span>
-                    </Badge>
-                  ))}
+                  {visibleItems.length > 0 ? (
+                    visibleItems.map((item) => (
+                      <Badge
+                        key={item.id}
+                        onClick={() => handleQuickAddProduct(item)}
+                        className="cursor-pointer bg-white/5 hover:bg-brand-yellow-500/20 text-gray-300 hover:text-brand-yellow-400 border-white/10 hover:border-brand-yellow-500/30 transition-all px-3 py-1.5 text-sm"
+                      >
+                        {item.name}
+                        <span className="ml-2 text-xs opacity-70">
+                          ETB {Number(item.defaultPrice).toFixed(2)}
+                        </span>
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-400">
+                      No matching active products.
+                    </p>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   Click a product to add with default price (adjustable after
@@ -847,7 +1013,7 @@ export function InvoiceForm({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  <div className="md:col-span-5 space-y-2">
+                  <div className="md:col-span-4 space-y-2">
                     <Label className="text-gray-300">Description *</Label>
                     <Input
                       {...register(`lines.${index}.description`)}
@@ -862,6 +1028,27 @@ export function InvoiceForm({
                   </div>
 
                   <div className="md:col-span-2 space-y-2">
+                    <Label className="text-gray-300">Line Type *</Label>
+                    <Select
+                      value={watch(`lines.${index}.lineType`) || "Good"}
+                      onValueChange={(value) =>
+                        setValue(
+                          `lines.${index}.lineType`,
+                          value as "Good" | "Service"
+                        )
+                      }
+                    >
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Good">Good</SelectItem>
+                        <SelectItem value="Service">Service</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="md:col-span-1 space-y-2">
                     <Label className="text-gray-300">Unit *</Label>
                     <Input
                       {...register(`lines.${index}.unit`)}
@@ -956,9 +1143,7 @@ export function InvoiceForm({
               ETB {calculateTotal().toFixed(2)}
             </span>
           </div>
-          {applyWithholding &&
-            buyerType === "Company" &&
-            goodsOrService === "Service" && (
+          {applyWithholding && buyerType === "Company" && (
               <>
                 <div className="flex justify-between items-center py-2 text-red-400">
                   <span>Withholding Tax (3%):</span>

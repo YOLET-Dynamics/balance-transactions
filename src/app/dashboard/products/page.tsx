@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useItems, useDeleteItem, type Item } from "@/lib/hooks/use-items";
+import {
+  useCreateItem,
+  useItems,
+  useUpdateItem,
+  type Item,
+} from "@/lib/hooks/use-items";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -44,10 +49,20 @@ import {
   Loader2,
   Package,
   Edit,
-  Trash2,
+  Archive,
   CheckCircle,
   XCircle,
+  Copy,
+  RotateCcw,
+  Save,
+  X,
 } from "lucide-react";
+
+type ArchiveTarget = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -56,10 +71,17 @@ export default function ProductsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("active");
   const [page, setPage] = useState(1);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(
+    null
+  );
+  const [editingPrice, setEditingPrice] = useState<{
+    id: string;
+    value: string;
+  } | null>(null);
   const limit = 20;
 
-  const deleteProduct = useDeleteItem();
+  const createProduct = useCreateItem();
+  const updateProduct = useUpdateItem();
 
   // Debounce search input
   useEffect(() => {
@@ -80,7 +102,10 @@ export default function ProductsPage() {
     page,
     limit,
     search: debouncedSearch || undefined,
-    type: typeFilter !== "all" ? (typeFilter as any) : undefined,
+    type:
+      typeFilter === "Good" || typeFilter === "Service"
+        ? typeFilter
+        : undefined,
     isActive: activeFilter === "all" ? undefined : activeFilter === "active",
   });
 
@@ -91,14 +116,68 @@ export default function ProductsPage() {
     }).format(amount)}`;
   };
 
-  const handleDelete = () => {
-    if (!deleteId) return;
-    deleteProduct.mutate(deleteId, {
-      onSuccess: () => {
-        setDeleteId(null);
-        refetch();
+  const handleArchiveToggle = () => {
+    if (!archiveTarget) return;
+    updateProduct.mutate(
+      {
+        id: archiveTarget.id,
+        data: { isActive: !archiveTarget.isActive },
       },
+      {
+        onSuccess: () => {
+          setArchiveTarget(null);
+          refetch();
+        },
+      }
+    );
+  };
+
+  const handleDuplicate = (product: Item) => {
+    createProduct.mutate({
+      type: product.type,
+      name: `${product.name} Copy`,
+      description: product.description || undefined,
+      unit: product.unit,
+      sku: product.sku ? `${product.sku}-copy` : undefined,
+      barcode: product.barcode || undefined,
+      defaultPrice: product.defaultPrice,
+      vatApplicable: product.vatApplicable,
+      isActive: true,
     });
+  };
+
+  const handlePriceSave = (product: Item) => {
+    if (!editingPrice || editingPrice.id !== product.id) return;
+
+    const nextPrice = Number(editingPrice.value);
+    if (!Number.isFinite(nextPrice) || nextPrice < 0) return;
+
+    updateProduct.mutate(
+      {
+        id: product.id,
+        data: { defaultPrice: nextPrice },
+      },
+      {
+        onSuccess: () => {
+          setEditingPrice(null);
+          refetch();
+        },
+      }
+    );
+  };
+
+  const handleReactivate = (product: Item) => {
+    updateProduct.mutate(
+      {
+        id: product.id,
+        data: { isActive: true },
+      },
+      {
+        onSuccess: () => {
+          refetch();
+        },
+      }
+    );
   };
 
   if (isLoading && !data) {
@@ -130,8 +209,8 @@ export default function ProductsPage() {
     );
   }
 
-  const products: Item[] = (data as any)?.items || [];
-  const totalCount = (data as any)?.total || 0;
+  const products: Item[] = data?.items || [];
+  const totalCount = data?.total || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
   return (
@@ -273,7 +352,59 @@ export default function ProductsPage() {
                           {product.unit}
                         </TableCell>
                         <TableCell className="text-white font-medium">
-                          {formatCurrency(product.defaultPrice)}
+                          {editingPrice?.id === product.id ? (
+                            <div className="flex min-w-48 items-center gap-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editingPrice.value}
+                                onChange={(event) =>
+                                  setEditingPrice({
+                                    id: product.id,
+                                    value: event.target.value,
+                                  })
+                                }
+                                className="h-8 bg-white/5 border-white/10 text-white"
+                                autoFocus
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handlePriceSave(product)}
+                                disabled={updateProduct.isPending}
+                                className="h-8 w-8 p-0 text-green-400 hover:bg-green-500/10 hover:text-green-300"
+                                title="Save price"
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingPrice(null)}
+                                className="h-8 w-8 p-0 text-gray-400 hover:bg-white/10 hover:text-white"
+                                title="Cancel price edit"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingPrice({
+                                  id: product.id,
+                                  value: String(product.defaultPrice),
+                                })
+                              }
+                              className="rounded-md px-2 py-1 text-left text-white hover:bg-white/10"
+                              title="Quick edit price"
+                            >
+                              {formatCurrency(product.defaultPrice)}
+                            </button>
+                          )}
                         </TableCell>
                         <TableCell>
                           {product.vatApplicable ? (
@@ -308,11 +439,41 @@ export default function ProductsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setDeleteId(product.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              onClick={() => handleDuplicate(product)}
+                              disabled={createProduct.isPending}
+                              className="text-blue-300 hover:text-blue-200 hover:bg-blue-500/10"
+                              title="Duplicate product"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Copy className="h-4 w-4" />
                             </Button>
+                            {product.isActive ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setArchiveTarget({
+                                    id: product.id,
+                                    name: product.name,
+                                    isActive: product.isActive,
+                                  })
+                                }
+                                className="text-gray-400 hover:text-white hover:bg-white/10"
+                                title="Archive product"
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleReactivate(product)}
+                                disabled={updateProduct.isPending}
+                                className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                title="Reactivate product"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -355,16 +516,21 @@ export default function ProductsPage() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog
+        open={!!archiveTarget}
+        onOpenChange={(open) => {
+          if (!open) setArchiveTarget(null);
+        }}
+      >
         <AlertDialogContent className="bg-gray-900 border-white/10">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
-              Delete Product?
+              {archiveTarget?.isActive ? "Archive Product?" : "Reactivate Product?"}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-400">
-              This action cannot be undone. This will permanently delete the
-              product from your catalog.
+              {archiveTarget?.isActive
+                ? `${archiveTarget.name} will be hidden from active product pickers but kept in your catalog history.`
+                : `${archiveTarget?.name || "This product"} will return to active product pickers.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -372,11 +538,19 @@ export default function ProductsPage() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              disabled={deleteProduct.isPending}
+              onClick={handleArchiveToggle}
+              className={
+                archiveTarget?.isActive
+                  ? "bg-brand-yellow-500 text-black hover:bg-brand-yellow-600"
+                  : "bg-green-600 text-white hover:bg-green-700"
+              }
+              disabled={updateProduct.isPending}
             >
-              {deleteProduct.isPending ? "Deleting..." : "Delete"}
+              {updateProduct.isPending
+                ? "Saving..."
+                : archiveTarget?.isActive
+                  ? "Archive"
+                  : "Reactivate"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -384,4 +558,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-

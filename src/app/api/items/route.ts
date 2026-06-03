@@ -1,4 +1,9 @@
-import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
+import {
+  createRoute,
+  getAllowedSearchParam,
+  getPaginationParams,
+  getValidatedBody,
+} from "@/lib/api/route-handler";
 import { requireRole } from "@/lib/middleware/auth.middleware";
 import { itemsService } from "@/application/services/items.service";
 import { createItemSchema } from "@/lib/validation/schemas";
@@ -7,10 +12,12 @@ import { authRepository } from "@/infrastructure/repositories/auth.repository.im
 export const GET = createRoute(
   async ({ request, auth }) => {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const { page, limit } = getPaginationParams(request, 50);
     const search = searchParams.get("search") || undefined;
-    const type = searchParams.get("type") as any;
+    const type = getAllowedSearchParam(request, "type", [
+      "Good",
+      "Service",
+    ] as const);
     const isActive = searchParams.get("isActive")
       ? searchParams.get("isActive") === "true"
       : undefined;
@@ -49,4 +56,3 @@ export const POST = createRoute(
     bodySchema: createItemSchema,
   }
 );
-

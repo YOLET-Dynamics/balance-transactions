@@ -1,5 +1,5 @@
 import { hash, verify, type Options } from "@node-rs/argon2";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHmac, randomInt } from "crypto";
 
 /**
  * Argon2id configuration (OWASP recommended)
@@ -57,13 +57,24 @@ export function generateTokenPair(): { token: string; hash: string } {
   return { token, hash: tokenHash };
 }
 
+function getTokenPepper(): string {
+  const pepper = process.env.AUTH_TOKEN_PEPPER || process.env.SESSION_SECRET;
+  if (pepper) return pepper;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_TOKEN_PEPPER or SESSION_SECRET must be set");
+  }
+
+  return "development-only-token-pepper";
+}
+
 /**
- * Hash a token using SHA-256 (for email verification, password reset tokens)
+ * Hash a token using HMAC-SHA-256 (for sessions and reset tokens)
  * @param token - Token to hash
- * @returns string - SHA-256 hash of the token
+ * @returns string - HMAC-SHA-256 hash of the token
  */
 export function hashToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
+  return createHmac("sha256", getTokenPepper()).update(token).digest("hex");
 }
 
 /**
@@ -71,8 +82,7 @@ export function hashToken(token: string): string {
  * @returns string - 6-digit numeric OTP
  */
 export function generateOTP(): string {
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  return otp;
+  return randomInt(100000, 1000000).toString();
 }
 
 /**
@@ -81,5 +91,5 @@ export function generateOTP(): string {
  * @returns string - SHA-256 hash of the OTP
  */
 export function hashOTP(otp: string): string {
-  return createHash("sha256").update(otp).digest("hex");
+  return createHmac("sha256", getTokenPepper()).update(otp).digest("hex");
 }

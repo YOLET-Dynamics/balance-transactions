@@ -1,6 +1,8 @@
-import { createRoute } from "@/lib/api/route-handler";
+import { createRoute, getValidatedBody } from "@/lib/api/route-handler";
 import { purchasesService } from "@/application/services/purchases.service";
 import { requireRole } from "@/lib/middleware/auth.middleware";
+import { updatePurchaseBillSchema } from "@/lib/validation/schemas";
+import { authRepository } from "@/infrastructure/repositories/auth.repository.impl";
 
 export const GET = createRoute(
   async ({ params, auth }) => {
@@ -17,12 +19,14 @@ export const PATCH = createRoute(
   async ({ params, auth, request }) => {
     requireRole(auth!, "Manager");
 
-    const body = await request.json();
+    const body = getValidatedBody<typeof updatePurchaseBillSchema._type>(request);
+    const org = await authRepository.findOrgById(auth!.orgId);
 
     const bill = await purchasesService.updateBill(
       auth!.orgId,
       params!.id,
-      body
+      body,
+      org!.isWithholdingAgent
     );
 
     return bill;
@@ -30,6 +34,7 @@ export const PATCH = createRoute(
   {
     requireAuth: true,
     rateLimit: "mutations",
+    bodySchema: updatePurchaseBillSchema,
   }
 );
 
@@ -46,4 +51,3 @@ export const DELETE = createRoute(
     rateLimit: "mutations",
   }
 );
-

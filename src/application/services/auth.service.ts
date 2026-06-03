@@ -5,6 +5,7 @@ import {
   generateTokenPair,
   generateOTP,
   hashOTP,
+  hashToken,
 } from "../../lib/crypto/hash";
 import {
   sendVerificationOtp,
@@ -75,42 +76,29 @@ export class AuthService {
       throw new ConflictError("Organization code already taken");
     }
 
-    // Hash password
     const passwordHash = await hashPassword(input.password);
 
-    // Create user
-    const user = await this.authRepo.createUser({
-      email: input.email,
-      passwordHash,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      phone: input.phone,
-    });
-
-    // Create organization
-    const org = await this.authRepo.createOrg({
-      code: input.orgCode,
-      legalName: input.orgLegalName,
-      createdBy: user.id,
-    });
-
-    // Create membership with Owner role
-    await this.authRepo.createMembership(user.id, org.id, "Owner");
-
-    // Generate OTP for email verification
     const otp = generateOTP();
     const otpHash = hashOTP(otp);
     const expiresAt = new Date(Date.now() + VERIFICATION_OTP_DURATION_MS);
-    await this.authRepo.createEmailVerificationToken(
-      user.id,
+
+    const { user } = await this.authRepo.createRegistration(
+      {
+        email: input.email,
+        passwordHash,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        phone: input.phone,
+      },
+      {
+        code: input.orgCode,
+        legalName: input.orgLegalName,
+      },
       otpHash,
       expiresAt
     );
 
-    // Send verification OTP (async, don't block registration)
-    sendVerificationOtp(user.email, otp).catch((err) => {
-      console.error("Failed to send verification OTP:", err);
-    });
+    void sendVerificationOtp(user.email, otp).catch(() => undefined);
 
     return {
       userId: user.id,
@@ -201,31 +189,16 @@ export class AuthService {
       throw new ConflictError("Email already verified");
     }
 
-    // Hash the provided OTP
     const otpHash = hashOTP(otp);
+    const consumed = await this.authRepo.consumeEmailVerificationToken(
+      user.id,
+      otpHash,
+      new Date()
+    );
 
-    // Find the verification token by hash
-    const tokenRecord = await this.authRepo.findEmailVerificationToken(otpHash);
-
-    if (!tokenRecord) {
+    if (!consumed) {
       throw new UnauthorizedError("Invalid or expired verification code");
     }
-
-    if (tokenRecord.userId !== user.id) {
-      throw new UnauthorizedError("Invalid verification code");
-    }
-
-    if (tokenRecord.usedAt) {
-      throw new ConflictError("Verification code already used");
-    }
-
-    // Check if expired
-    if (tokenRecord.expiresAt < new Date()) {
-      throw new UnauthorizedError("Verification code has expired");
-    }
-
-    await this.authRepo.updateUserEmailVerified(tokenRecord.userId, true);
-    await this.authRepo.markEmailVerificationTokenUsed(otpHash);
   }
 
   async resendVerificationOtp(email: string): Promise<{ message: string }> {
@@ -254,9 +227,7 @@ export class AuthService {
       expiresAt
     );
 
-    sendVerificationOtp(user.email, otp).catch((err) => {
-      throw err;
-    });
+    void sendVerificationOtp(user.email, otp).catch(() => undefined);
 
     return {
       message: "A new verification code has been sent to your email.",
@@ -277,9 +248,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + RESET_TOKEN_DURATION_MS);
     await this.authRepo.createPasswordResetToken(user.id, hash, expiresAt);
 
-    sendPasswordResetEmail(user.email, token).catch((err) => {
-      throw err;
-    });
+    void sendPasswordResetEmail(user.email, token).catch(() => undefined);
 
     return {
       message:
@@ -288,24 +257,16 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const tokenRecord = await this.authRepo.findPasswordResetToken(token);
-
-    if (!tokenRecord) {
-      throw new NotFoundError("Invalid or expired reset token");
-    }
-
-    if (tokenRecord.usedAt) {
-      throw new ConflictError("Token already used");
-    }
-
-    // Check if expired
-    if (tokenRecord.expiresAt < new Date()) {
-      throw new UnauthorizedError("Reset token has expired");
-    }
-
     const passwordHash = await hashPassword(newPassword);
-    await this.authRepo.updateUser(tokenRecord.userId, { passwordHash });
-    await this.authRepo.markPasswordResetTokenUsed(token);
+    const consumed = await this.authRepo.consumePasswordResetToken(
+      hashToken(token),
+      passwordHash,
+      new Date()
+    );
+
+    if (!consumed) {
+      throw new UnauthorizedError("Invalid or expired reset token");
+    }
   }
 
   async validateSession(tokenHash: string): Promise<{

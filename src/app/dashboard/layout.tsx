@@ -11,9 +11,11 @@ import {
   LogOut,
   Building2,
   ChevronLeft,
-  ChevronRight,
   Bell,
   Package,
+  Menu,
+  Users,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/lib/hooks/use-auth";
@@ -99,6 +101,18 @@ export default function DashboardLayout({
       icon: Package,
       active: pathname.startsWith("/dashboard/products"),
     },
+    {
+      href: "/dashboard/customers",
+      label: "Customers",
+      icon: Users,
+      active: pathname.startsWith("/dashboard/customers"),
+    },
+    {
+      href: "/dashboard/vendors",
+      label: "Vendors",
+      icon: Truck,
+      active: pathname.startsWith("/dashboard/vendors"),
+    },
   ];
 
   const bottomNavItems = [
@@ -111,7 +125,7 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="h-screen bg-black text-white flex overflow-hidden">
+    <div className="h-dvh bg-[#0a0a0a] text-white overflow-hidden">
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -124,13 +138,27 @@ export default function DashboardLayout({
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 ${
           sidebarOpen ? "w-64" : "md:w-20 w-64"
-        } border-r border-white/10 bg-black transition-all duration-300 flex flex-col flex-shrink-0 fixed md:relative h-full z-50`}
+        } border-r border-white/10 bg-[#0a0a0a] transition-all duration-300 flex flex-col fixed inset-y-0 left-0 z-50`}
       >
-        <div className="p-6 border-b border-white/10 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-brand-yellow-500 flex items-center justify-center flex-shrink-0">
-              <Building2 className="h-6 w-6 text-black" />
-            </div>
+        <div
+          className={`h-24 px-4 border-b border-white/10 flex items-center gap-2 flex-shrink-0 ${
+            sidebarOpen ? "justify-between" : "md:justify-center"
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            {sidebarOpen ? (
+              <div className="h-10 w-10 rounded-lg bg-brand-yellow-500 flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-6 w-6 text-black" />
+              </div>
+            ) : (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Expand sidebar"
+                className="h-10 w-10 rounded-lg bg-brand-yellow-500 hover:bg-brand-yellow-600 flex items-center justify-center flex-shrink-0 transition-colors"
+              >
+                <Building2 className="h-6 w-6 text-black" />
+              </button>
+            )}
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 {sessionLoading ? (
@@ -153,6 +181,15 @@ export default function DashboardLayout({
               </div>
             )}
           </div>
+          {sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Collapse sidebar"
+              className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-white/5 hover:text-white transition-colors flex-shrink-0"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -165,7 +202,7 @@ export default function DashboardLayout({
                 onClick={handleLinkClick}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   item.active
-                    ? "bg-brand-yellow-500 text-black"
+                    ? "bg-white/10 text-white"
                     : "text-gray-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
@@ -188,7 +225,7 @@ export default function DashboardLayout({
                 onClick={handleLinkClick}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   item.active
-                    ? "bg-brand-yellow-500 text-black"
+                    ? "bg-white/10 text-white"
                     : "text-gray-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
@@ -215,28 +252,28 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden w-full">
-        <header className="h-[73px] border-b border-white/10 bg-black flex-shrink-0 z-30 flex items-center">
+      <main
+        className={`flex h-dvh min-w-0 flex-col overflow-hidden transition-[padding] duration-300 ${
+          sidebarOpen ? "md:pl-64" : "md:pl-20"
+        }`}
+      >
+        <header className="h-24 border-b border-white/10 bg-[#0a0a0a] flex-shrink-0 z-30 flex items-center">
           <div className="px-4 flex items-center justify-between w-full">
             <div className="flex items-center gap-4 flex-1">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="text-gray-400 hover:text-white h-8 w-8 p-0"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
+                className="md:hidden text-gray-400 hover:text-white h-8 w-8 p-0"
               >
-                {sidebarOpen ? (
-                  <ChevronLeft className="h-5 w-5" />
-                ) : (
-                  <ChevronRight className="h-5 w-5" />
-                )}
+                <Menu className="h-5 w-5" />
               </Button>
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-400 hover:text-white transition-colors">
+              <button className="p-2 text-gray-400 hover:text-white transition-colors">
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-brand-yellow-500 rounded-full"></span>
               </button>
 
               <div className="flex items-center gap-2">
@@ -264,7 +301,9 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto">{children}</div>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {children}
+        </div>
       </main>
     </div>
   );

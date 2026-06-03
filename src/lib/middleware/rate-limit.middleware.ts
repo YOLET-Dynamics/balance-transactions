@@ -2,35 +2,34 @@ import Redis from "ioredis";
 import { NextRequest } from "next/server";
 import { RateLimitError } from "../utils/errors";
 
-// Create Redis client using REDIS_URL (defaults to local Redis for development)
-const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
-  retryStrategy(times) {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-});
+let redis: Redis | null = null;
+let shutdownHandlersRegistered = false;
 
-redis.on("error", (err) => {
-  console.error("Redis connection error:", err);
-});
+function getRedis(): Redis {
+  if (!redis) {
+    redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+      lazyConnect: true,
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: true,
+      retryStrategy(times) {
+        return Math.min(times * 50, 2000);
+      },
+    });
 
-redis.on("connect", () => {
-  console.log("Redis connected successfully");
-});
+    redis.on("error", () => undefined);
+  }
 
-redis.on("ready", () => {
-  console.log("Redis ready to accept commands");
-});
+  if (!shutdownHandlersRegistered && typeof process !== "undefined") {
+    shutdownHandlersRegistered = true;
+    process.on("SIGTERM", async () => {
+      await redis?.quit();
+    });
+    process.on("SIGINT", async () => {
+      await redis?.quit();
+    });
+  }
 
-if (typeof process !== "undefined") {
-  process.on("SIGTERM", async () => {
-    await redis.quit();
-  });
-  process.on("SIGINT", async () => {
-    await redis.quit();
-  });
+  return redis;
 }
 
 interface RateLimiterConfig {
@@ -84,7 +83,7 @@ async function slidingWindowRateLimit(
   const now = Date.now();
   const windowStart = now - config.window * 1000;
 
-  const pipeline = redis.pipeline();
+  const pipeline = getRedis().pipeline();
 
   pipeline.zremrangebyscore(key, 0, windowStart);
 

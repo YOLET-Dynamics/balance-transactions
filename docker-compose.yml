@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -8,13 +6,13 @@ services:
     environment:
       POSTGRES_DB: balance
       POSTGRES_USER: balance
-      POSTGRES_PASSWORD: balanceDB123!
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U balance"]
+      test: ["CMD-SHELL", "pg_isready -U balance -d balance"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,13 +21,15 @@ services:
     image: redis:7-alpine
     container_name: balance-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secure_password}
+    command: sh -c 'redis-server --requirepass "$${REDIS_PASSWORD}"'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,17 +47,18 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://balance:${POSTGRES_PASSWORD:-balance_secure_password}@postgres:5432/balance
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379
-      RESEND_KEY: ${RESEND_KEY}
-      RESEND_SENDER: ${RESEND_SENDER}
-      UPLOADTHING_TOKEN: ${UPLOADTHING_TOKEN}
-      SESSION_SECRET: ${SESSION_SECRET:-change_me_in_production}
+      DB_URL: postgresql://balance:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/balance
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+      RESEND_KEY: ${RESEND_KEY:?RESEND_KEY is required}
+      RESEND_SENDER: ${RESEND_SENDER:?RESEND_SENDER is required}
+      UPLOADTHING_TOKEN: ${UPLOADTHING_TOKEN:?UPLOADTHING_TOKEN is required}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      APP_URL: ${APP_URL:-http://localhost:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));\""]
       interval: 30s
       timeout: 10s
       retries: 3

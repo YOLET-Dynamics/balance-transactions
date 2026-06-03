@@ -28,6 +28,6 @@ export const POST = createRoute(
   {
     requireAuth: true,
     rateLimit: "mutations",
+    bodySchema: createVendorSchema,
   }
 );
-
